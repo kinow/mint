@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <limits>
 #include <vtkCell.h>
 #ifndef MNT_UGRID_EDGE_READER
 #define MNT_UGRID_EDGE_READER
@@ -36,6 +37,14 @@ void getEdge(size_t edgeId, double pBeg[], double pEnd[]) const;
 
 
 /**
+ * Get min/max range of the domain
+ * @param xmin low point of the domain (output)
+ * @param xmax high point of the domain (output)
+ */
+std::vector<double> getRange(double xmin[], double xmax[]) const;
+
+
+/**
  * Load from Ugrid file 
  * @param filename file name
  * @return error (0=OK)
@@ -56,6 +65,10 @@ private:
 
     // edge to node connectivity
     std::vector<double> edge2Points;
+
+    // domain min/max
+    std::vector<double> xmin;
+    std::vector<double> xmax;
 };
 
 #endif // MNT_UGRID_EDGE_READER
