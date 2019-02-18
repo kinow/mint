@@ -4,9 +4,16 @@ include_directories(
   ${CMAKE_Fortran_MODULE_DIRECTORY}
 )
 
+configure_file(testUgridEdgeReader.cpp testUgridEdgeReader.cxx)
 configure_file(testGrid.cpp testGrid.cxx)
 configure_file(testRegridEdgesFromUgrid.cpp testRegridEdgesFromUgrid.cxx)
 
+add_executable(testUgridEdgeReader testUgridEdgeReader.cxx)
+target_link_libraries(testUgridEdgeReader
+                      mint
+                      ${VTK_LIBRARIES}
+                      ${NETCDF_LIBRARIES}
+ )
 add_executable(testSimpleRegridEdges testSimpleRegridEdges.cxx)
 target_link_libraries(testSimpleRegridEdges
                     mint
@@ -149,6 +156,8 @@ target_link_libraries(testCmdLineArgParserFB
                       ${VTK_LIBRARIES}
 )
 
+
+add_test(NAME ugridEdgeReader COMMAND testUgridEdgeReader)
 add_test(NAME regridEdgesF
 	     COMMAND testRegridEdgesF 
 	     "-s" "${CMAKE_SOURCE_DIR}/data/cs_16.nc" 
@@ -156,7 +165,6 @@ add_test(NAME regridEdgesF
 	     "-o" "weights.nc")
 set_tests_properties(regridEdgesF PROPERTIES
                      FAIL_REGULAR_EXPRESSION "ERROR")
-
 add_test(NAME simpleRegridEdges COMMAND testSimpleRegridEdges)
 add_test(NAME regridEdgesFromUgrid COMMAND testRegridEdgesFromUgrid)
 add_test(NAME polylineParser COMMAND testPolylineParser)

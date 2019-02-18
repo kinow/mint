@@ -6,6 +6,8 @@
 
 class UgridEdgeReader {
 
+public:
+
 /**
  * Constructor
  */
@@ -56,7 +58,6 @@ void getEdgePoints(size_t edgeId, double pBeg[], double pEnd[]) const;
  * @return error (0=OK)
  */
 int load(const std::string& filename);
-
 
 private:
 
