@@ -41,7 +41,7 @@ void getEdge(size_t edgeId, double pBeg[], double pEnd[]) const;
  * @param xmin low point of the domain (output)
  * @param xmax high point of the domain (output)
  */
-std::vector<double> getRange(double xmin[], double xmax[]) const;
+void getRange(double xmin[], double xmax[]) const;
 
 
 /**
