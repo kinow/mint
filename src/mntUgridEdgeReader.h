@@ -18,11 +18,6 @@ UgridEdgeReader();
  */
 ~UgridEdgeReader();
 
-/**
- * Get the number of points
- * @return number
- */
-size_t getNumberOfPoints() const;
 
 /**
  * Get the number of edges
@@ -30,27 +25,15 @@ size_t getNumberOfPoints() const;
  */
 size_t getNumberOfEdges() const;
 
-/**
- * Get point/vertex
- * @param point Id 
- * @return point coordinates
- */
-const double* getPoint(size_t ptId) const;
 
 /**
- * Get edge to point connectivity
+ * Get edge
  * @param edge Id 
- * @return point Ids
+ * @param pBeg start point of the edge (output)
+ * @param pEnd end point of the edge (output)
  */
-const vtkIdType* getEdge(size_t edgeId) const;
+void getEdge(size_t edgeId, double pBeg[], double pEnd[]) const;
 
-/**
- * Get edge points, adding/subtracting a longitude period if necessary
- * @param edge Id
- * @param pBeg start edge coordinates
- * @param pEnd end edge coordinatess
- */
-void getEdgePoints(size_t edgeId, double pBeg[], double pEnd[]) const;
 
 /**
  * Load from Ugrid file 
@@ -59,21 +42,20 @@ void getEdgePoints(size_t edgeId, double pBeg[], double pEnd[]) const;
  */
 int load(const std::string& filename);
 
+
 private:
 
-	int readPoints(int ncid);
+	std::vector<double> readPoints(int ncid);
 
-	int readEdgeConnectivity(int ncid);
+	int readEdgeConnectivity(int ncid, const std::vector<double>& points);
 
 	int findVariableIdWithCfRole(int ncid, const std::string& cf_role, int* ndims, int dimids[]);
 
 	int findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]);
 
-    // vertex raw data
-    std::vector<double> verts;
 
     // edge to node connectivity
-    std::vector<vtkIdType> edge2Nodes;
+    std::vector<double> edge2Points;
 };
 
 #endif // MNT_UGRID_EDGE_READER
