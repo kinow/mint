@@ -9,8 +9,10 @@ void test() {
     std::cout << "Number of edges: " << uer.getNumberOfEdges() << '\n';
     double xmin[3], xmax[3];
     uer.getRange(xmin, xmax);
-    std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] 
+    std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] << " -> "
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
+
+    uer.buildLocator(10);
 }
 
 int main(int argc, char** argv) {

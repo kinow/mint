@@ -1,4 +1,6 @@
 #include <vector>
+#include "MvVector.h"
+#include <map>
 #include <string>
 #include <limits>
 #include <vtkCell.h>
@@ -35,6 +37,20 @@ size_t getNumberOfEdges() const;
  */
 void getEdge(size_t edgeId, double pBeg[], double pEnd[]) const;
 
+/**
+ * Build the edge locator
+ * @param numEdgesPerBucket average number of edges per bucket
+ */
+void buildLocator(int numEdgesPerBucket);
+
+/**
+ * Get the edges that likely interesect a line
+ * @param pBeg start point of the line
+ * @param pEnd end point of the line
+ * @return list of edge indices
+ */
+std::vector<size_t> getEdgesAlongLine(const double pBeg[], const double pEnd[]) const;
+
 
 /**
  * Get min/max range of the domain
@@ -54,6 +70,16 @@ int load(const std::string& filename);
 
 private:
 
+    // edge to node connectivity
+    std::vector<double> edge2Points;
+
+    // domain min/max
+    std::vector<double> xmin;
+    std::vector<double> deltas;
+
+    std::map<size_t, std::vector<size_t> > buckets;
+    size_t nBuckets;
+
 	std::vector<double> readPoints(int ncid);
 
 	int readEdgeConnectivity(int ncid, const std::vector<double>& points);
@@ -63,12 +89,15 @@ private:
 	int findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]);
 
 
-    // edge to node connectivity
-    std::vector<double> edge2Points;
+	inline Vector<size_t> getBucketLoc(const double p[]) const {
 
-    // domain min/max
-    std::vector<double> xmin;
-    std::vector<double> xmax;
+    	Vector<size_t> indexLoc(2);
+    	indexLoc[0] = (size_t) std::floor(this->nBuckets * (p[0] - this->xmin[0])/this->deltas[0]);
+    	indexLoc[1] = (size_t) std::floor(this->nBuckets * (p[1] - this->xmin[1])/this->deltas[1]);
+    	// our locator is in 2d only
+    	return indexLoc;
+    }
+
 };
 
 #endif // MNT_UGRID_EDGE_READER
