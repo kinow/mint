@@ -239,6 +239,9 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
     std::vector<double> diffLonMinusZeroPlus(3); // - 360, 0, +360
     this->edge2Points.resize(nEdges * NUM_SPACE_DIMS * 2); // 2 points in 3d for each edge
 
+    this->xmin.resize(NUM_SPACE_DIMS, +std::numeric_limits<double>::max());
+    Vector<double> xmax(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
+
     for (size_t i = 0; i < nEdges; ++i) {
 
         vtkIdType i0 = edge2Nodes[0 + i*2] - startIndex;
@@ -265,9 +268,6 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
             pBeg[LON_INDEX] = pEnd[LON_INDEX];
         }
 
-        this->xmin.resize(NUM_SPACE_DIMS, +std::numeric_limits<double>::max());
-        this->deltas.resize(NUM_SPACE_DIMS);
-        std::vector<double> xmax(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
         // store
         for (size_t j = 0; j < NUM_SPACE_DIMS; ++j) {
 
@@ -275,12 +275,12 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
             this->edge2Points[j + 3*(1 + i*2)] = pEnd[j];
 
             this->xmin[j] = std::min(this->xmin[j], std::min(pBeg[j], pEnd[j]));
-
             xmax[j] = std::max(xmax[j], std::max(pBeg[j], pEnd[j]));
-
-            this->deltas[j] = xmax[j] - this->xmin[j];
         }
     }
+
+    this->deltas.resize(NUM_SPACE_DIMS);
+    this->deltas = xmax - this->xmin;
 
     return 0;
 }

@@ -12,6 +12,12 @@ void test() {
     std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] << " -> "
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
 
+    Vector<double> pBeg(3), pEnd(3);
+    for (size_t ie = 0; ie < uer.getNumberOfEdges(); ++ie) {
+        uer.getEdge(ie, &pBeg[0], &pEnd[0]);
+        std::cerr << "edge " << ie << " connects points " << pBeg << " -> " << pEnd << '\n';
+    }
+
     int numEdgesPerBucket = 10;
     uer.buildLocator(numEdgesPerBucket);
 
