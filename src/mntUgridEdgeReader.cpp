@@ -166,7 +166,6 @@ std::vector<double>
     int ndims, ier;
     // max number of dimensions is 10
     int dimids[10];
-    size_t dims[10];
 
     // looking for a variable with standard_name "longitude" and "latitude"
 
@@ -202,9 +201,9 @@ std::vector<double>
     // store
     points.resize(nPoints * 3);
     for (size_t i = 0; i < nPoints; ++i) {
-        points[LON_INDEX + 3*i] = lons[i];
-        points[LAT_INDEX + 3*i] = lats[i];
-        points[ELV_INDEX + 3*i] = 0.0; // no elevation at this point
+        points[LON_INDEX + NUM_SPACE_DIMS*i] = lons[i];
+        points[LAT_INDEX + NUM_SPACE_DIMS*i] = lats[i];
+        points[ELV_INDEX + NUM_SPACE_DIMS*i] = 0.0; // no elevation at this point
     }
 
     return points;
