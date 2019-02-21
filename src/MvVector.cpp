@@ -25,6 +25,11 @@ Vector<T>::Vector(size_t n, T e) : std::vector<T>(n, e)
 }
 
 template<class T>
+Vector<T>::Vector(const T* vBeg, const T* vEnd) : std::vector<T>(vBeg, vEnd)
+{
+}
+
+template<class T>
 Vector<T>::Vector(const Vector<T> &w)
 {
   (*this) = w;

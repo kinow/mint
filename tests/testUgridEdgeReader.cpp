@@ -12,7 +12,8 @@ void test() {
     std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] << " -> "
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
 
-    uer.buildLocator(10);
+    int numEdgesPerBucket = 10;
+    uer.buildLocator(numEdgesPerBucket);
 }
 
 int main(int argc, char** argv) {

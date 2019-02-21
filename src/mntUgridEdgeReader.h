@@ -1,4 +1,5 @@
 #include <vector>
+#include <algorithm>
 #include "MvVector.h"
 #include <map>
 #include <string>
@@ -6,6 +7,9 @@
 #include <vtkCell.h>
 #ifndef MNT_UGRID_EDGE_READER
 #define MNT_UGRID_EDGE_READER
+
+#define NUM_PARAM_DIMS 2
+#define NUM_SPACE_DIMS 3
 
 class UgridEdgeReader {
 
@@ -41,7 +45,7 @@ void getEdge(size_t edgeId, double pBeg[], double pEnd[]) const;
  * Build the edge locator
  * @param numEdgesPerBucket average number of edges per bucket
  */
-void buildLocator(int numEdgesPerBucket);
+void buildLocator(int numEdgesPerBucket, double tol=1.e-2);
 
 /**
  * Get the edges that likely interesect a line
@@ -74,8 +78,8 @@ private:
     std::vector<double> edge2Points;
 
     // domain min/max
-    std::vector<double> xmin;
-    std::vector<double> deltas;
+    Vector<double> xmin;
+    Vector<double> deltas;
 
     std::map<size_t, std::vector<size_t> > buckets;
     size_t nBuckets;
@@ -88,14 +92,20 @@ private:
 
 	int findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]);
 
+    inline Vector<double> getBucketSpaceLoc(const double p[]) const {
+        Vector<double> res(p, p + NUM_SPACE_DIMS);
+        res -= this->xmin;
+        res /= this->deltas;
+        res *= (double) this->nBuckets;
+        return res;
+    }
 
-	inline Vector<size_t> getBucketLoc(const double p[]) const {
-
-    	Vector<size_t> indexLoc(2);
-    	indexLoc[0] = (size_t) std::floor(this->nBuckets * (p[0] - this->xmin[0])/this->deltas[0]);
-    	indexLoc[1] = (size_t) std::floor(this->nBuckets * (p[1] - this->xmin[1])/this->deltas[1]);
-    	// our locator is in 2d only
-    	return indexLoc;
+    inline Vector<size_t> getBucketCellLoc(const double p[]) const {
+        Vector<double> loc = this->getBucketSpaceLoc(p);
+        Vector<size_t> res(NUM_PARAM_DIMS);
+        std::transform(loc.begin(), loc.begin() + NUM_PARAM_DIMS, res.begin(),
+                       [](double x) -> size_t {return (size_t)std::floor(x);});
+        return res;
     }
 
 };
