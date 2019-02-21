@@ -236,7 +236,7 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
         return 1;
     }
 
-    std::vector<double> diffLonMinusZeroPlus(3);
+    std::vector<double> diffLonMinusZeroPlus(3); // - 360, 0, +360
     this->edge2Points.resize(nEdges * NUM_SPACE_DIMS * 2); // 2 points in 3d for each edge
 
     for (size_t i = 0; i < nEdges; ++i) {
