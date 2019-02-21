@@ -84,13 +84,13 @@ private:
     std::map<size_t, std::vector<size_t> > buckets;
     size_t nBuckets;
 
-	std::vector<double> readPoints(int ncid);
+    std::vector<double> readPoints(int ncid);
 
-	int readEdgeConnectivity(int ncid, const std::vector<double>& points);
+    int readEdgeConnectivity(int ncid, const std::vector<double>& points);
 
-	int findVariableIdWithCfRole(int ncid, const std::string& cf_role, int* ndims, int dimids[]);
+    int findVariableIdWithCfRole(int ncid, const std::string& cf_role, int* ndims, int dimids[]);
 
-	int findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]);
+    int findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]);
 
     inline Vector<double> getBucketSpaceLoc(const double p[]) const {
         Vector<double> res(p, p + NUM_SPACE_DIMS);

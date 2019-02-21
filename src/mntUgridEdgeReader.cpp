@@ -142,7 +142,7 @@ UgridEdgeReader::load(const std::string& filename) {
         return 1;
     }
 
-    std::vector<double>&& points = this->readPoints(ncid);
+    std::vector<double> points = this->readPoints(ncid);
     if (points.size() == 0) {
         std::cerr << "ERROR: cannot read points\n";
         return 1;
