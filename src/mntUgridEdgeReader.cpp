@@ -49,14 +49,14 @@ UgridEdgeReader::buildLocator(int numEdgesPerBucket, double tol) {
         double uNormSquare = dot(u, u);
 
         // compute the bucket index location
-        Vector<size_t> iBeg = this->getBucketCellLoc(pBeg);
-        Vector<size_t> iEnd = this->getBucketCellLoc(pEnd);
-        Vector<size_t> i0 = std::min(iBeg, iEnd);
-        Vector<size_t> i1 = std::max(iBeg, iEnd);
+        Vector<int> iBeg = this->getBucketCellLoc(pBeg);
+        Vector<int> iEnd = this->getBucketCellLoc(pEnd);
+        Vector<int> i0 = std::min(iBeg, iEnd);
+        Vector<int> i1 = std::max(iBeg, iEnd);
 
         // iterate over all the cells in the box
-        for (size_t j = i0[1]; j <= i1[1]; ++j) {
-            for (size_t i = i0[0]; i <= i1[0]; ++i) {
+        for (int j = i0[1]; j <= i1[1]; ++j) {
+            for (int i = i0[0]; i <= i1[0]; ++i) {
 
                 // average the vertex positions
                 Vector<double> quadCentre(NUM_SPACE_DIMS);
@@ -96,10 +96,10 @@ UgridEdgeReader::buildLocator(int numEdgesPerBucket, double tol) {
 std::vector<size_t> 
 UgridEdgeReader::getEdgesAlongLine(const double pBeg[], const double pEnd[]) const {
 
-    Vector<size_t> iBeg = this->getBucketCellLoc(pBeg);
-    Vector<size_t> iEnd = this->getBucketCellLoc(pEnd);
-    Vector<size_t> i0 = std::min(iBeg, iEnd);
-    Vector<size_t> i1 = std::max(iBeg, iEnd);
+    Vector<int> iBeg = this->getBucketCellLoc(pBeg);
+    Vector<int> iEnd = this->getBucketCellLoc(pEnd);
+   Vector<int> i0 = std::min(iBeg, iEnd);
+    Vector<int> i1 = std::max(iBeg, iEnd);
 
     std::vector<size_t> edgeIds;
 

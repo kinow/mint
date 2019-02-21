@@ -14,6 +14,15 @@ void test() {
 
     int numEdgesPerBucket = 10;
     uer.buildLocator(numEdgesPerBucket);
+
+    double pa[] = {0., -90., 0.};
+    double pb[] = {360., +90., 0.};
+    double p0[3], p1[3];
+    std::vector<size_t> edgeIds = uer.getEdgesAlongLine(pa, pb);
+    for (size_t ie = 0; ie < edgeIds.size(); ++ie) {
+        uer.getEdge(ie, p0, p1);
+        std::cout << "edge Id " << ie << " points " << p0[0] << ',' << p0[1] << " -> " << p1[0] << ',' << p1[1] << '\n';
+    }
 }
 
 int main(int argc, char** argv) {

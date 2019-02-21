@@ -100,11 +100,12 @@ private:
         return res;
     }
 
-    inline Vector<size_t> getBucketCellLoc(const double p[]) const {
+    inline Vector<int> getBucketCellLoc(const double p[]) const {
         Vector<double> loc = this->getBucketSpaceLoc(p);
-        Vector<size_t> res(NUM_PARAM_DIMS);
-        std::transform(loc.begin(), loc.begin() + NUM_PARAM_DIMS, res.begin(),
-                       [](double x) -> size_t {return (size_t)std::floor(x);});
+        Vector<int> res(NUM_PARAM_DIMS);
+        for (size_t i = 0; i < loc.size(); ++i) {
+            res[i] = std::min((int) this->nBuckets - 1, std::max(0, (int) std::floor(loc[i])));
+        }
         return res;
     }
 
