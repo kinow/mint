@@ -6,7 +6,7 @@
 void test() {
     UgridEdgeReader uer;
     uer.load("${CMAKE_SOURCE_DIR}/data/cs_4.nc");
-
+    /*
     std::cout << "Number of edges: " << uer.getNumberOfEdges() << '\n';
     double xmin[3], xmax[3];
     uer.getRange(xmin, xmax);
@@ -27,6 +27,7 @@ void test() {
         uer.getEdge(ie, p0, p1);
         std::cout << "edge Id " << ie << " points " << p0[0] << ',' << p0[1] << " -> " << p1[0] << ',' << p1[1] << '\n';
     }
+    */
 }
 
 int main(int argc, char** argv) {

@@ -74,6 +74,9 @@ UgridEdgeReader::load(const std::string& filename) {
 std::vector<double>
 UgridEdgeReader::readPoints(int ncid) {
 
+    this->xmin.resize(NUM_SPACE_DIMS, +std::numeric_limits<double>::max());
+    this->xmax.resize(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
+
     std::vector<double> points;
 
     int ndims, ier;
@@ -128,14 +131,13 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
     int ndims, ier;
     // max number of dimensions is 10
     int dimids[10];
-    size_t dims[10];
     int varid = this->findVariableIdWithCfRole(ncid, "edge_node_connectivity", &ndims, dimids);
     if (varid < 0) {
         std::cerr << "ERROR: could not find edge_node_connectivity\n";
         return 1;
     }
-    int startIndex;
-    int ier2 = nc_get_att_int(ncid, varid, "start_index", &startIndex);
+    int startIndex = 0;
+    nc_get_att_int(ncid, varid, "start_index", &startIndex);
 
     // allocate
     size_t nEdges;
@@ -151,9 +153,6 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
 
     std::vector<double> diffLonMinusZeroPlus(3); // - 360, 0, +360
     this->edge2Points.resize(nEdges * NUM_SPACE_DIMS * 2); // 2 points in 3d for each edge
-
-    this->xmin.resize(NUM_SPACE_DIMS, +std::numeric_limits<double>::max());
-    this->xmax.resize(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
 
     for (size_t i = 0; i < nEdges; ++i) {
 
