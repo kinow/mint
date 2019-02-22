@@ -24,108 +24,17 @@ UgridEdgeReader::getNumberOfEdges() const {
 
 void
 UgridEdgeReader::getEdge(size_t edgeId, double pBeg[], double pEnd[]) const {
-    for (size_t j = 0; j < 3; ++j) {
-        pBeg[j] = this->edge2Points[j + NUM_SPACE_DIMS*(0 + edgeId*2)];
-        pEnd[j] = this->edge2Points[j + NUM_SPACE_DIMS*(1 + edgeId*2)];
+    for (size_t i = 0; i < NUM_SPACE_DIMS; ++i) {
+        pBeg[i] = this->edge2Points[i + (0 + edgeId*2)*NUM_SPACE_DIMS];
+        pEnd[i] = this->edge2Points[i + (1 + edgeId*2)*NUM_SPACE_DIMS];
     }
 }
-
-void
-UgridEdgeReader::buildLocator(int numEdgesPerBucket, double tol) {
-
-    // number of cells in x and y directions
-    this->nBuckets = std::max(1, (int)(std::sqrt((double) this->edge2Points.size()/(NUM_SPACE_DIMS*2 * 2.0 * (double) numEdgesPerBucket))));
-
-    double pBeg[NUM_SPACE_DIMS], pEnd[NUM_SPACE_DIMS];
-    for (size_t ie = 0; ie < this->getNumberOfEdges(); ++ie) {
-
-        // get the start/end point of the edge
-        this->getEdge(ie, pBeg, pEnd);
-
-        // build vectors
-        Vector<double> pa(pBeg, pBeg + NUM_SPACE_DIMS);
-        Vector<double> u(pEnd, pEnd + NUM_SPACE_DIMS);
-        u -= pa;
-        double uNormSquare = dot(u, u);
-
-        // compute the bucket index location
-        Vector<int> iBeg = this->getBucketCellLoc(pBeg);
-        Vector<int> iEnd = this->getBucketCellLoc(pEnd);
-        Vector<int> i0 = std::min(iBeg, iEnd);
-        Vector<int> i1 = std::max(iBeg, iEnd);
-
-        // iterate over all the cells in the box
-        for (int j = i0[1]; j <= i1[1]; ++j) {
-            for (int i = i0[0]; i <= i1[0]; ++i) {
-
-                // average the vertex positions
-                Vector<double> quadCentre(NUM_SPACE_DIMS);
-                quadCentre[0] = i + 0.5; quadCentre[1] = j + 0.5;
-
-                // check if line intersects with this bucket. Compute the line parameter that
-                // minimizes the distance of the cell's vertices to the line. Then check if this
-                // point is inside the quad
-                double lam = dot(quadCentre - pa, u)/uNormSquare;
-                lam = std::min(1.0, lam);
-                lam = std::max(0.0, lam);
-                Vector<double> quadPt = pa + lam*u;
-                // is the point inside the quad?
-                if (quadPt[0] >= i - tol && quadPt[0] <= i + 1 + tol &&
-                    quadPt[1] >= j - tol && quadPt[1] <= j + 1 + tol) {
-
-                    // flat index
-                    size_t k = i + j * this->nBuckets;
-
-                    std::map<size_t, std::vector<size_t> >::iterator it = this->buckets.find(k);
-
-                    if (it != this->buckets.end()) {
-                        // add all the edge Ids in this bucket
-                        it->second.push_back(ie);
-                    }
-                    else {
-                        // create new entry and add all the edge Ids
-                        std::pair<size_t, std::vector<size_t> > kv(k, std::vector<size_t>(1, ie));
-                        this->buckets.insert(kv);
-                    }
-                } // test if closest point is inside bucket
-            } // j bucket iteration
-        } // i bucket iteration
-    } // edge iteration
-}
-
-std::vector<size_t> 
-UgridEdgeReader::getEdgesAlongLine(const double pBeg[], const double pEnd[]) const {
-
-    Vector<int> iBeg = this->getBucketCellLoc(pBeg);
-    Vector<int> iEnd = this->getBucketCellLoc(pEnd);
-   Vector<int> i0 = std::min(iBeg, iEnd);
-    Vector<int> i1 = std::max(iBeg, iEnd);
-
-    std::vector<size_t> edgeIds;
-
-    for (int j = i0[1]; j <= i1[1]; ++j) {
-        for (int i = i0[0]; i <= i1[0]; ++i) {
-
-            // flat index
-            size_t k = i + j * this->nBuckets;
-
-            std::map<size_t, std::vector<size_t> >::const_iterator it = this->buckets.find(k);
-            for (auto ie : it->second) {
-                // add all the edges that belong to that cell
-                edgeIds.push_back(ie);
-            }
-        }
-    }
-
-    return edgeIds;
-}
-
 
 void
 UgridEdgeReader::getRange(double xMin[], double xMax[]) const {
-    for (size_t i = 0; i < this->xmin.size(); ++i) {
+    for (size_t i = 0; i < NUM_SPACE_DIMS; ++i) {
         xMin[i] = this->xmin[i];
-        xMax[i] = this->xmin[i] + this->deltas[i];
+        xMax[i] = this->xmax[i];
     }
 }
 
@@ -142,7 +51,7 @@ UgridEdgeReader::load(const std::string& filename) {
         return 1;
     }
 
-    std::vector<double> points = this->readPoints(ncid);
+    const std::vector<double>& points = this->readPoints(ncid);
     if (points.size() == 0) {
         std::cerr << "ERROR: cannot read points\n";
         return 1;
@@ -156,10 +65,14 @@ UgridEdgeReader::load(const std::string& filename) {
 
     // close the netcdf file
     ier = nc_close(ncid);
+    if (ier != NC_NOERR) {
+        std::cerr << "ERROR: cannot close file\n";
+        return 1;
+    }
 }
 
 std::vector<double>
- UgridEdgeReader::readPoints(int ncid) {
+UgridEdgeReader::readPoints(int ncid) {
 
     std::vector<double> points;
 
@@ -199,7 +112,7 @@ std::vector<double>
     }
 
     // store
-    points.resize(nPoints * 3);
+    points.resize(nPoints * NUM_SPACE_DIMS);
     for (size_t i = 0; i < nPoints; ++i) {
         points[LON_INDEX + NUM_SPACE_DIMS*i] = lons[i];
         points[LAT_INDEX + NUM_SPACE_DIMS*i] = lats[i];
@@ -229,7 +142,7 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
     ier = nc_inq_dimlen(ncid, dimids[0], &nEdges);
 
     // read
-    std::vector<vtkIdType> edge2Nodes(nEdges * 2);
+    std::vector<vtkIdType> edge2Nodes(nEdges * 2); // two nodes per edge
     ier = nc_get_var_longlong(ncid, varid, &edge2Nodes[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not read edge_node_connectivity\n";
@@ -240,14 +153,17 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
     this->edge2Points.resize(nEdges * NUM_SPACE_DIMS * 2); // 2 points in 3d for each edge
 
     this->xmin.resize(NUM_SPACE_DIMS, +std::numeric_limits<double>::max());
-    Vector<double> xmax(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
+    this->xmax.resize(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
 
     for (size_t i = 0; i < nEdges; ++i) {
 
         vtkIdType i0 = edge2Nodes[0 + i*2] - startIndex;
         vtkIdType i1 = edge2Nodes[1 + i*2] - startIndex;
-        std::vector<double> pBeg(&points[i0*NUM_SPACE_DIMS], &points[i0*NUM_SPACE_DIMS] + NUM_SPACE_DIMS);
-        std::vector<double> pEnd(&points[i1*NUM_SPACE_DIMS], &points[i1*NUM_SPACE_DIMS] + NUM_SPACE_DIMS);
+
+        const double* p0 = &points[i0*NUM_SPACE_DIMS];
+        const double* p1 = &points[i1*NUM_SPACE_DIMS];
+        std::vector<double> pBeg(p0, p0 + NUM_SPACE_DIMS);
+        std::vector<double> pEnd(p1, p1 + NUM_SPACE_DIMS);
 
         // add/subtract 360 deg to reduce the length of the edge
         for (size_t j = 0; j < NUM_SPACE_DIMS; ++j) {
@@ -271,16 +187,13 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
         // store
         for (size_t j = 0; j < NUM_SPACE_DIMS; ++j) {
 
-            this->edge2Points[j + 3*(0 + i*2)] = pBeg[j];
-            this->edge2Points[j + 3*(1 + i*2)] = pEnd[j];
+            this->edge2Points[j + NUM_SPACE_DIMS*(0 + i*2)] = pBeg[j];
+            this->edge2Points[j + NUM_SPACE_DIMS*(1 + i*2)] = pEnd[j];
 
             this->xmin[j] = std::min(this->xmin[j], std::min(pBeg[j], pEnd[j]));
-            xmax[j] = std::max(xmax[j], std::max(pBeg[j], pEnd[j]));
+            this->xmax[j] = std::max(this->xmax[j], std::max(pBeg[j], pEnd[j]));
         }
     }
-
-    this->deltas.resize(NUM_SPACE_DIMS);
-    this->deltas = xmax - this->xmin;
 
     return 0;
 }

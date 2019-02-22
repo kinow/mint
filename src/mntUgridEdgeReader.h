@@ -42,21 +42,6 @@ size_t getNumberOfEdges() const;
 void getEdge(size_t edgeId, double pBeg[], double pEnd[]) const;
 
 /**
- * Build the edge locator
- * @param numEdgesPerBucket average number of edges per bucket
- */
-void buildLocator(int numEdgesPerBucket, double tol=1.e-2);
-
-/**
- * Get the edges that likely interesect a line
- * @param pBeg start point of the line
- * @param pEnd end point of the line
- * @return list of edge indices
- */
-std::vector<size_t> getEdgesAlongLine(const double pBeg[], const double pEnd[]) const;
-
-
-/**
  * Get min/max range of the domain
  * @param xmin low point of the domain (output)
  * @param xmax high point of the domain (output)
@@ -71,6 +56,14 @@ void getRange(double xmin[], double xmax[]) const;
  */
 int load(const std::string& filename);
 
+/**
+ * Get the edge vertices 
+ * @return array [p0x, p0y, p0z, p1x, p1y, p1z, ....]
+ */
+const std::vector<double>& getEdgePoints() const {
+    return this->edge2Points;
+}
+
 
 private:
 
@@ -79,10 +72,7 @@ private:
 
     // domain min/max
     Vector<double> xmin;
-    Vector<double> deltas;
-
-    std::map<size_t, std::vector<size_t> > buckets;
-    size_t nBuckets;
+    Vector<double> xmax;
 
     std::vector<double> readPoints(int ncid);
 
@@ -91,23 +81,6 @@ private:
     int findVariableIdWithCfRole(int ncid, const std::string& cf_role, int* ndims, int dimids[]);
 
     int findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]);
-
-    inline Vector<double> getBucketSpaceLoc(const double p[]) const {
-        Vector<double> res(p, p + NUM_SPACE_DIMS);
-        res -= this->xmin;
-        res /= this->deltas;
-        res *= (double) this->nBuckets;
-        return res;
-    }
-
-    inline Vector<int> getBucketCellLoc(const double p[]) const {
-        Vector<double> loc = this->getBucketSpaceLoc(p);
-        Vector<int> res(NUM_PARAM_DIMS);
-        for (size_t i = 0; i < loc.size(); ++i) {
-            res[i] = std::min((int) this->nBuckets - 1, std::max(0, (int) std::floor(loc[i])));
-        }
-        return res;
-    }
 
 };
 
