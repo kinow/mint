@@ -74,6 +74,9 @@ UgridEdgeReader::load(const std::string& filename) {
 std::vector<double>
 UgridEdgeReader::readPoints(int ncid) {
 
+    this->xmin.resize(NUM_SPACE_DIMS, +std::numeric_limits<double>::max());
+    this->xmax.resize(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
+
     std::vector<double> points;
 
     int ier;
@@ -133,8 +136,8 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
         std::cerr << "ERROR: could not find edge_node_connectivity\n";
         return 1;
     }
-    int startIndex;
-    int ier2 = nc_get_att_int(ncid, varid, "start_index", &startIndex);
+    int startIndex = 0;
+    nc_get_att_int(ncid, varid, "start_index", &startIndex);
 
     // allocate
     std::vector<vtkIdType> edge2Nodes(nEdgesTimesTwo); // two nodes per edge
