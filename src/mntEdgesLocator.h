@@ -66,6 +66,8 @@ private:
     std::map<size_t, std::vector<size_t> > buckets;
     size_t nBuckets;
 
+    std::set<size_t> getBucketsAlongLine(const double pBeg[], const double pEnd[]) const;
+
     inline Vector<double> getBucketSpaceLoc(const double p[]) const {
         Vector<double> res(NUM_PARAM_DIMS);
         for (size_t i = 0; i < NUM_PARAM_DIMS; ++i) {
