@@ -18,7 +18,10 @@ EdgesLocator::~EdgesLocator() {
 }
 
 void
-EdgesLocator::build(const std::vector<double>& edge2Points, int numEdgesPerBucket, double tol) {
+EdgesLocator::build(const std::vector<double>& edge2Points, int numEdgesPerBucket) {
+
+    // required to test if a line has any chance of intersecting a cell
+    const double halo = 0.12;
 
     size_t numEdges = edge2Points.size() / (NUM_SPACE_DIMS * 2);
 
@@ -31,39 +34,46 @@ EdgesLocator::build(const std::vector<double>& edge2Points, int numEdgesPerBucke
         const double* pBeg = &edge2Points[0 + (0 + ie*2)*NUM_SPACE_DIMS];
         const double* pEnd = &edge2Points[0 + (1 + ie*2)*NUM_SPACE_DIMS];
 
-        // build vectors
-        Vector<double> pa(pBeg, pBeg + NUM_SPACE_DIMS);
-        Vector<double> u(pEnd, pEnd + NUM_SPACE_DIMS);
-        u -= pa;
-        double uNormSquare = dot(u, u);
+        // compute the start/end points of line in bucket space
+        Vector<double> bBeg = this->getBucketSpaceLoc(pBeg);
+        Vector<double> bEnd = this->getBucketSpaceLoc(pEnd);
+        Vector<double> bU = bEnd - bBeg;
+        double bUNormSquare = dot(bU, bU);
 
         // compute the bucket index location
         Vector<int> iBeg = this->getBucketCellLoc(pBeg);
         Vector<int> iEnd = this->getBucketCellLoc(pEnd);
-        Vector<int> i0 = std::min(iBeg, iEnd);
-        Vector<int> i1 = std::max(iBeg, iEnd);
 
-        // iterate over all the cells in the box
-        for (int j = i0[1]; j <= i1[1]; ++j) {
-            for (int i = i0[0]; i <= i1[0]; ++i) {
+        // select the region of interest
+        Vector<int> imin = min(iBeg, iEnd);
+        Vector<int> imax = max(iBeg, iEnd);
+
+        // iterate over all the cells in the region of interest
+        for (int i = imin[0]; i <= imax[0]; ++i) {
+            for (int j = imin[1]; j <= imax[1]; ++j) {
 
                 // average the vertex positions
-                Vector<double> quadCentre(NUM_SPACE_DIMS);
-                quadCentre[0] = i + 0.5; quadCentre[1] = j + 0.5;
+                Vector<double> bQuadCentre(NUM_PARAM_DIMS, 0.0);
+                bQuadCentre[0] = i + 0.5; bQuadCentre[1] = j + 0.5;
 
                 // check if line intersects with this bucket. Compute the line parameter that
                 // minimizes the distance of the cell's vertices to the line. Then check if this
-                // point is inside the quad
-                double lam = dot(quadCentre - pa, u)/uNormSquare;
+                // point is inside the quad to within some tolerance (halo). Now it can happen 
+                // that the clostest point is outside but the line still interects the bucket, e.g.
+                // by cutting the corner.  
+                double lam = dot(bQuadCentre - bBeg, bU)/bUNormSquare;
                 lam = std::min(1.0, lam);
                 lam = std::max(0.0, lam);
-                Vector<double> quadPt = pa + lam*u;
-                // is the point inside the quad?
-                if (quadPt[0] >= i - tol && quadPt[0] <= i + 1 + tol &&
-                    quadPt[1] >= j - tol && quadPt[1] <= j + 1 + tol) {
+
+                // point on the line that is closest to the quad
+                Vector<double> bClosestPtOnLine = bBeg + lam*bU;
+
+                // is the point inside the quad to within some tolerance?
+                if (bClosestPtOnLine[0] >= i - halo && bClosestPtOnLine[0] <= i + 1 + halo &&
+                    bClosestPtOnLine[1] >= j - halo && bClosestPtOnLine[1] <= j + 1 + halo) {
 
                     // flat index
-                    size_t k = i + j * this->nBuckets;
+                    size_t k = j + i * this->nBuckets;
 
                     std::map<size_t, std::vector<size_t> >::iterator it = this->buckets.find(k);
 
@@ -82,26 +92,27 @@ EdgesLocator::build(const std::vector<double>& edge2Points, int numEdgesPerBucke
     } // edge iteration
 }
 
-std::vector<vtkIdType> 
+std::set<vtkIdType> 
 EdgesLocator::getEdgesAlongLine(const double pBeg[], const double pEnd[]) const {
 
     Vector<int> iBeg = this->getBucketCellLoc(pBeg);
     Vector<int> iEnd = this->getBucketCellLoc(pEnd);
-    Vector<int> i0 = std::min(iBeg, iEnd);
-    Vector<int> i1 = std::max(iBeg, iEnd);
+    Vector<int> imin = min(iBeg, iEnd);
+    Vector<int> imax = max(iBeg, iEnd);
 
-    std::vector<vtkIdType> edgeIds;
+    // collect edge ids
+    std::set<vtkIdType> edgeIds;
 
-    for (int j = i0[1]; j <= i1[1]; ++j) {
-        for (int i = i0[0]; i <= i1[0]; ++i) {
+    for (int i = imin[0]; i <= imax[0]; ++i) {
+        for (int j = imin[1]; j <= imax[1]; ++j) {
 
             // flat index
-            size_t k = i + j * this->nBuckets;
+            size_t k = j + i * this->nBuckets;
 
             std::map<size_t, std::vector<size_t> >::const_iterator it = this->buckets.find(k);
             for (auto ie : it->second) {
                 // add all the edges that belong to that cell
-                edgeIds.push_back(ie);
+                edgeIds.insert(ie);
             }
         }
     }

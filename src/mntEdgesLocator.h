@@ -1,5 +1,7 @@
 #include <vector>
+#include <set>
 #include <algorithm>
+
 #include "MvVector.h"
 #include <map>
 #include <string>
@@ -44,9 +46,8 @@ void setRange(const double xmin[], const double xmax[]) {
  * Build the edge locator
  * @param edge2Points array of points
  * @param numEdgesPerBucket average number of edges per bucket
- * @para tol tolerance
  */
-void build(const std::vector<double>& edge2Points, int numEdgesPerBucket, double tol=1.e-2);
+void build(const std::vector<double>& edge2Points, int numEdgesPerBucket);
 
 /**
  * Get the edges that likely interesect a line
@@ -54,7 +55,7 @@ void build(const std::vector<double>& edge2Points, int numEdgesPerBucket, double
  * @param pEnd end point of the line
  * @return list of edge indices
  */
-std::vector<vtkIdType> getEdgesAlongLine(const double pBeg[], const double pEnd[]) const;
+std::set<vtkIdType> getEdgesAlongLine(const double pBeg[], const double pEnd[]) const;
 
 
 private:
@@ -66,10 +67,10 @@ private:
     size_t nBuckets;
 
     inline Vector<double> getBucketSpaceLoc(const double p[]) const {
-        Vector<double> res(p, p + NUM_SPACE_DIMS);
-        res -= this->xmin;
-        res /= this->deltas;
-        res *= (double) this->nBuckets;
+        Vector<double> res(NUM_PARAM_DIMS);
+        for (size_t i = 0; i < NUM_PARAM_DIMS; ++i) {
+            res[i] = ( (p[i] - this->xmin[i]) / this->deltas[i] ) * (double)(this->nBuckets);
+        }
         return res;
     }
 

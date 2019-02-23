@@ -12,22 +12,25 @@ void test() {
     std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] << " -> "
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
 
-    /*
+
     EdgesLocator el;
     el.setRange(xmin, xmax);
     int numEdgesPerBucket = 10;
-    double tol = 1.e-3;
-    el.build(uer.getEdgePoints(), numEdgesPerBucket, tol);
+    el.build(uer.getEdgePoints(), numEdgesPerBucket);
 
     double pa[] = {0., -90., 0.};
-    double pb[] = {360., +90., 0.};
+    double pb[] = {0., -90., 0.}; // {360., +90., 0.};
     double p0[3], p1[3];
-    std::vector<vtkIdType> edgeIds = el.getEdgesAlongLine(pa, pb);
-    for (size_t ie = 0; ie < edgeIds.size(); ++ie) {
-        uer.getEdge(ie, p0, p1);
-        std::cout << "edge Id " << ie << " points " << p0[0] << ',' << p0[1] << " -> " << p1[0] << ',' << p1[1] << '\n';
+    std::set<vtkIdType> edgeIds = el.getEdgesAlongLine(pa, pb);
+
+    std::cout << "Found " << edgeIds.size() << " edges that are likely intersecting line "
+              << pa[0] << ',' << pa[1] << ',' << pa[2] << " -> "
+              << pb[0] << ',' << pb[1] << ',' << pb[2] << '\n';
+
+    for (auto iet = edgeIds.begin(); iet != edgeIds.end(); ++iet) {
+        uer.getEdge(*iet, p0, p1);
+        std::cout << "edge Id " << *iet << " points " << p0[0] << ',' << p0[1] << " -> " << p1[0] << ',' << p1[1] << '\n';
     }
-    */
 }
 
 int main(int argc, char** argv) {
