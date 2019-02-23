@@ -78,9 +78,8 @@ private:
 
     int readEdgeConnectivity(int ncid, const std::vector<double>& points);
 
-    int findVariableIdWithCfRole(int ncid, const std::string& cf_role, int* ndims, int dimids[]);
-
-    int findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]);
+    int findVariableIdWithAttribute(int ncid, 
+                                    const std::string& attrname, const std::string& attrval, size_t* nsize);
 
 };
 

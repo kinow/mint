@@ -76,26 +76,26 @@ UgridEdgeReader::readPoints(int ncid) {
 
     std::vector<double> points;
 
-    int ndims, ier;
-    // max number of dimensions is 10
-    int dimids[10];
+    int ier;
+
+    size_t nPoints;
 
     // looking for a variable with standard_name "longitude" and "latitude"
 
-    int varidLon = this->findVariableIdWithStandardName(ncid, "longitude", &ndims, dimids);
+    int varidLon = this->findVariableIdWithAttribute(ncid, 
+                         "standard_name", "longitude", &nPoints);
     if (varidLon < 0) {
         std::cerr << "ERROR: could not find longitude\n";
         return points;
     }
-    int varidLat = this->findVariableIdWithStandardName(ncid, "latitude", &ndims, dimids);
+    int varidLat = this->findVariableIdWithAttribute(ncid, 
+                         "standard_name", "latitude", &nPoints);
     if (varidLon < 0) {
         std::cerr << "ERROR: could not find latitude\n";
         return points;
     }
 
     // allocate
-    size_t nPoints;
-    ier = nc_inq_dimlen(ncid, dimids[0], &nPoints);
     std::vector<double> lons(nPoints);
     std::vector<double> lats(nPoints);
 
@@ -125,11 +125,10 @@ UgridEdgeReader::readPoints(int ncid) {
 int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& points) {
 
     // looking for a variable with cf_role "edge_node_connectivity"
-    int ndims, ier;
-    // max number of dimensions is 10
-    int dimids[10];
-    size_t dims[10];
-    int varid = this->findVariableIdWithCfRole(ncid, "edge_node_connectivity", &ndims, dimids);
+    int ier;
+    size_t nEdgesTimesTwo;
+    int varid = this->findVariableIdWithAttribute(ncid, 
+                      "cf_role", "edge_node_connectivity", &nEdgesTimesTwo);
     if (varid < 0) {
         std::cerr << "ERROR: could not find edge_node_connectivity\n";
         return 1;
@@ -138,11 +137,9 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
     int ier2 = nc_get_att_int(ncid, varid, "start_index", &startIndex);
 
     // allocate
-    size_t nEdges;
-    ier = nc_inq_dimlen(ncid, dimids[0], &nEdges);
+    std::vector<vtkIdType> edge2Nodes(nEdgesTimesTwo); // two nodes per edge
 
     // read
-    std::vector<vtkIdType> edge2Nodes(nEdges * 2); // two nodes per edge
     ier = nc_get_var_longlong(ncid, varid, &edge2Nodes[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not read edge_node_connectivity\n";
@@ -150,11 +147,12 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
     }
 
     std::vector<double> diffLonMinusZeroPlus(3); // - 360, 0, +360
-    this->edge2Points.resize(nEdges * NUM_SPACE_DIMS * 2); // 2 points in 3d for each edge
+    this->edge2Points.resize(nEdgesTimesTwo * NUM_SPACE_DIMS); // 2 points in 3d for each edge
 
     this->xmin.resize(NUM_SPACE_DIMS, +std::numeric_limits<double>::max());
     this->xmax.resize(NUM_SPACE_DIMS, -std::numeric_limits<double>::max());
 
+    size_t nEdges = nEdgesTimesTwo / 2;
     for (size_t i = 0; i < nEdges; ++i) {
 
         vtkIdType i0 = edge2Nodes[0 + i*2] - startIndex;
@@ -199,14 +197,17 @@ int UgridEdgeReader::readEdgeConnectivity(int ncid, const std::vector<double>& p
 }
 
 
-int UgridEdgeReader::findVariableIdWithCfRole(int ncid, const std::string& cf_role, int* ndims, int dimids[]) {
+int UgridEdgeReader::findVariableIdWithAttribute(int ncid, 
+                                                 const std::string& attrname, 
+                                                 const std::string& attrvalue, 
+                                                 size_t* nsize) {
 
-    nc_type xtype;
-    int natts, ier;
-    char varname[NC_MAX_NAME];
+    // initialize
+    *nsize = 0;
+    int res = -1;
+    int ier;
 
-    size_t n = cf_role.size();
-
+    // find the number of variables
     int nvars;
     ier = nc_inq_nvars(ncid, &nvars);
     if (ier != NC_NOERR) {
@@ -215,48 +216,31 @@ int UgridEdgeReader::findVariableIdWithCfRole(int ncid, const std::string& cf_ro
         return -1;
     }
 
-    int res = -1;
 
-    std::string cf_role_input;
-    cf_role_input.assign(NC_MAX_NAME, ' ');
+    size_t attsize = attrvalue.size();
+    std::string attv(NC_MAX_NAME, ' '); // attribute value
     for (int ivar = 0; ivar < nvars; ++ivar) {
-        ier = nc_inq_var(ncid, ivar, varname, &xtype, ndims, &dimids[0], &natts);
-        int ier2 = nc_get_att_text(ncid, ivar, "cf_role", &cf_role_input[0]);
-        if (ier2 == NC_NOERR && cf_role_input.substr(0, n) == cf_role) {
-            // found the variable
+        int ier2 = nc_get_att_text(ncid, ivar, &attrname[0], &attv[0]);
+        if (ier2 == NC_NOERR && attv.substr(0, attsize) == attrvalue) {
+
+            // found the variable, store its id
             res = ivar;
-        }
-    }
 
-    return res;
-}
+            // get the number of dimensions
+            int ndims;
+            nc_inq_varndims(ncid, ivar, &ndims);
 
-int UgridEdgeReader::findVariableIdWithStandardName(int ncid, const std::string& standard_name, int* ndims, int dimids[]) {
+            // get the dimension ids
+            std::vector<int> dimids(ndims);
+            nc_inq_vardimid(ncid, ivar, &dimids[0]);
 
-    nc_type xtype;
-    int natts, ier;
-    char varname[NC_MAX_NAME];
-
-    size_t n = standard_name.size();
-
-    int nvars;
-    ier = nc_inq_nvars(ncid, &nvars);
-    if (ier != NC_NOERR) {
-        std::cerr << "ERROR: after inquiring the number of variables (ier = " 
-                  << ier << ")\n";
-        return -1;
-    }
-
-    int res = -1;
-
-    std::string standard_name_input;
-    standard_name_input.assign(NC_MAX_NAME, ' ');
-    for (int ivar = 0; ivar < nvars; ++ivar) {
-        ier = nc_inq_var(ncid, ivar, varname, &xtype, ndims, &dimids[0], &natts);
-        int ier2 = nc_get_att_text(ncid, ivar, "standard_name", &standard_name_input[0]);
-        if (ier2 == NC_NOERR && standard_name_input.substr(0, n) == standard_name) {
-            // found the variable
-            res = ivar;
+            // number of elements
+            *nsize = 1;
+            for (size_t i = 0; i < dimids.size(); ++i) {
+                size_t ns;
+                nc_inq_dimlen(ncid, dimids[i], &ns);
+                *nsize *= ns;
+            }
         }
     }
 

@@ -13,6 +13,7 @@ void test() {
     std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] << " -> "
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
 
+    /*
     EdgesLocator el;
     el.setRange(xmin, xmax);
     int numEdgesPerBucket = 10;
@@ -27,6 +28,7 @@ void test() {
         uer.getEdge(ie, p0, p1);
         std::cout << "edge Id " << ie << " points " << p0[0] << ',' << p0[1] << " -> " << p1[0] << ',' << p1[1] << '\n';
     }
+    */
 }
 
 int main(int argc, char** argv) {
