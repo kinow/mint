@@ -4,10 +4,17 @@ include_directories(
   ${CMAKE_Fortran_MODULE_DIRECTORY}
 )
 
+configure_file(testEdgesLocator.cpp testEdgesLocator.cxx)
 configure_file(testUgridEdgeReader.cpp testUgridEdgeReader.cxx)
 configure_file(testGrid.cpp testGrid.cxx)
 configure_file(testRegridEdgesFromUgrid.cpp testRegridEdgesFromUgrid.cxx)
 
+add_executable(testEdgesLocator testEdgesLocator.cxx)
+target_link_libraries(testEdgesLocator
+                      mint
+                      ${VTK_LIBRARIES}
+                      ${NETCDF_LIBRARIES}
+ )
 add_executable(testUgridEdgeReader testUgridEdgeReader.cxx)
 target_link_libraries(testUgridEdgeReader
                       mint
@@ -157,6 +164,7 @@ target_link_libraries(testCmdLineArgParserFB
 )
 
 
+add_test(NAME edgesLocator COMMAND testEdgesLocator)
 add_test(NAME ugridEdgeReader COMMAND testUgridEdgeReader)
 add_test(NAME regridEdgesF
 	     COMMAND testRegridEdgesF 
