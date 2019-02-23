@@ -28,6 +28,16 @@ EdgesLocator::build(const std::vector<double>& edge2Points, int numEdgesPerBucke
     // number of cells in x and y directions
     this->nBuckets = std::max(1, (int)(std::sqrt((double)numEdges/(2.0 * (double) numEdgesPerBucket))));
 
+    // create empty entries 
+    for (size_t i = 0; i < this->nBuckets; ++i) {
+        for (size_t j = 0; j < this->nBuckets; ++j) {
+            // flat index
+            size_t k = j + i * this->nBuckets;
+            std::pair<size_t, std::vector<size_t> > kv(k, std::vector<size_t>());
+            this->buckets.insert(kv);
+        }
+    }
+
     for (size_t ie = 0; ie < numEdges; ++ie) {
 
         // get the start/end point of the edge
@@ -77,15 +87,8 @@ EdgesLocator::build(const std::vector<double>& edge2Points, int numEdgesPerBucke
 
                     std::map<size_t, std::vector<size_t> >::iterator it = this->buckets.find(k);
 
-                    if (it != this->buckets.end()) {
-                        // add all the edge Ids in this bucket
-                        it->second.push_back(ie);
-                    }
-                    else {
-                        // create new entry and add all the edge Ids
-                        std::pair<size_t, std::vector<size_t> > kv(k, std::vector<size_t>(1, ie));
-                        this->buckets.insert(kv);
-                    }
+                    it->second.push_back(ie);
+                    
                 } // test if closest point is inside bucket
             } // j bucket iteration
         } // i bucket iteration
