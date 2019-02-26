@@ -84,7 +84,7 @@ UgridReader::load(const std::string& filename) {
     int startIndex;
 
     varid = this->findVariableIdWithAttribute(ncid, 
-                      "cf_role", "edge_node_connectivity", &n);
+                  "cf_role", "edge_node_connectivity", &n);
     this->edge2Points.resize(n);
     ier = nc_get_var_longlong(ncid, varid, &this->edge2Points[0]);
     // we're using zero based indexing
@@ -93,9 +93,10 @@ UgridReader::load(const std::string& filename) {
     for (size_t i = 0; i < n; ++i) {
         this->edge2Points[i] -= startIndex;
     }
+    this->numEdges = n / 2;
 
     varid = this->findVariableIdWithAttribute(ncid, 
-                      "cf_role", "edge_node_connectivity", &n);
+                  "cf_role", "face_edge_connectivity", &n);
     this->face2Edges.resize(n);
     ier = nc_get_var_longlong(ncid, varid, &this->face2Edges[0]);
     // we're using zero based indexing
@@ -104,6 +105,7 @@ UgridReader::load(const std::string& filename) {
     for (size_t i = 0; i < n; ++i) {
         this->face2Edges[i] -= startIndex;
     }
+    this->numFaces = n / 4;
 
     // close the netcdf file
     ier = nc_close(ncid);
@@ -125,21 +127,21 @@ UgridReader::readPoints(int ncid) {
 
     // looking for a variable with standard_name "longitude" and "latitude"
 
+    this->numPoints = 0;
     int varidLon = this->findVariableIdWithAttribute(ncid, 
-                         "standard_name", "longitude", &this->numPoints);
+                         "long_name", "longitude of 2D mesh nodes", &this->numPoints);
     if (varidLon < 0) {
         std::cerr << "ERROR: could not find longitude\n";
         return 1;
     }
+    std::vector<double> lons(this->numPoints);
+
     int varidLat = this->findVariableIdWithAttribute(ncid, 
-                         "standard_name", "latitude", &this->numPoints);
+                         "long_name", "latitude of 2D mesh nodes", &this->numPoints);
     if (varidLon < 0) {
         std::cerr << "ERROR: could not find latitude\n";
         return 1;
     }
-
-    // allocate
-    std::vector<double> lons(this->numPoints);
     std::vector<double> lats(this->numPoints);
 
     // read
