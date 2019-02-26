@@ -4,6 +4,7 @@ include_directories(
 )
 
 set(LIB_FILES
+  mntUgridReader.cpp
   mntEdgesLocator.cpp
   mntUgridEdgeReader.cpp
   mntQuadEdgeIter.cpp
@@ -30,6 +31,7 @@ set(LIB_FILES
 )
 
 set(HEADER_FILES
+  mntUgridReader.h
   mntEdgesLocator.h
   mntUgridEdgeReader.h
   mntQuadEdgeIter.h
