@@ -82,6 +82,20 @@ const double* getPoint(long long pointId) const {
 }
 
 /**
+ * Get the regularized points of the edge
+ * @param edgeId edge Id
+ * @return the two points with 360 added/substracted to minimize the edge length
+ */
+std::vector< Vector<double> > getEdgePointsRegularized(long long edgeId);
+
+/**
+ * Get the regularized points of the face
+ * @param faceId face Id
+ * @return the four points with 360 added/substracted to make the cell have a positive area
+ */
+std::vector< Vector<double> > getFacePointsRegularized(long long faceId);
+
+/**
  * Get min/max range of the domain
  * @param xmin low point of the domain (output)
  * @param xmax high point of the domain (output)
