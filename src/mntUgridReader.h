@@ -59,14 +59,18 @@ size_t getNumberOfPoints() const {
  * @param face Id 
  * @return pointer
  */
-const size_t* getFaceEdgeIds(long long faceId) const;
+const long long* getFaceEdgeIds(long long faceId) const {
+    return &this->face2Edges[faceId*4];
+}
 
 /**
  * Get pointer to the point Ids
  * @param edge Id 
  * @return pointer
  */
-const size_t* getEdgePointIds(long long edgeId) const;
+const long long* getEdgePointIds(long long edgeId) const {
+    return &this->edge2Points[edgeId*2];
+}
 
 /**
  * Get pointer to the coordinates
@@ -128,6 +132,8 @@ private:
 
     int findVariableIdWithAttribute(int ncid, const std::string& attrname, 
                                     const std::string& attrval, size_t* nsize);
+
+    void fixPeriodicity();
 
 };
 

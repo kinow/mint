@@ -114,6 +114,8 @@ UgridReader::load(const std::string& filename) {
         return 1;
     }
 
+    this->fixPeriodicity();
+
     return 0;
 }
 
@@ -223,5 +225,57 @@ int UgridReader::findVariableIdWithAttribute(int ncid,
     }
 
     return res;
+}
+
+void
+UgridReader::fixPeriodicity() {
+
+    std::vector<double> newPoints;
+    newPoints.reserve(this->numPoints/10);
+
+    for (size_t edgeId = 0; edgeId < this->numEdges; ++edgeId) {
+
+        const long long* pointIds = this->getEdgePointIds(edgeId);
+
+        const double* p0 = this->getPoint(pointIds[0]);
+        const double* p1 = this->getPoint(pointIds[1]);
+        
+        double dLon = p1[LON_INDEX] - p0[LON_INDEX];
+        const double dLonsPM360[] = {dLon - 360., dLon, dLon + 360};
+
+        const double* minDLon = std::min_element(&dLonsPM360[0], &dLonsPM360[3]);
+        int indexMin = (int) std::distance(dLonsPM360, minDLon);
+
+        if (indexMin != 1) {
+
+            // needs a correction
+
+            // point Id of the new vertex
+            size_t newPointId = (this->points.size() + newPoints.size()) / NUM_SPACE_DIMS;
+
+            // new vertex
+            Vector<double> newPoint(p1, p1 + NUM_SPACE_DIMS);
+
+            // apply periodic correction
+            newPoint[LON_INDEX] += (indexMin - 1)*360.0;
+
+            // update min/max of domain
+            double lon = newPoint[LON_INDEX];
+            this->xmin[LON_INDEX] = (lon < this->xmin[LON_INDEX]? lon: this->xmin[LON_INDEX]);
+            this->xmax[LON_INDEX] = (lon > this->xmax[LON_INDEX]? lon: this->xmax[LON_INDEX]);
+
+            for (size_t j = 0; j < NUM_SPACE_DIMS; ++j) {
+                newPoints.push_back(newPoint[j]);
+            }
+
+            // update the edge to node connectivity
+            this->edge2Points[1 + edgeId*2] = newPointId;
+        }
+
+    }
+
+    // now insert the new points
+    this->points.insert(this->points.end(), newPoints.begin(), newPoints.end());
+
 }
 
