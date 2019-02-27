@@ -4,6 +4,7 @@ include_directories(
 )
 
 set(LIB_FILES
+  mntVtkUgridAdaptor.cpp
   mntUgridReader.cpp
   mntEdgesLocator.cpp
   mntUgridEdgeReader.cpp
@@ -31,6 +32,7 @@ set(LIB_FILES
 )
 
 set(HEADER_FILES
+  mntVtkUgridAdaptor.h
   mntUgridReader.h
   mntEdgesLocator.h
   mntUgridEdgeReader.h

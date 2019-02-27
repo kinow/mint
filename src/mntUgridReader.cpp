@@ -114,7 +114,7 @@ UgridReader::load(const std::string& filename) {
         return 1;
     }
 
-    this->fixPeriodicity();
+    //this->fixPeriodicity();
 
     return 0;
 }
@@ -226,6 +226,7 @@ int UgridReader::findVariableIdWithAttribute(int ncid,
 
     return res;
 }
+
 
 void
 UgridReader::fixPeriodicity() {
