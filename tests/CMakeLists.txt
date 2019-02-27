@@ -4,12 +4,19 @@ include_directories(
   ${CMAKE_Fortran_MODULE_DIRECTORY}
 )
 
+configure_file(testVtkUgridAdaptor.cpp testVtkUgridAdaptor.cxx)
 configure_file(testUgridReader.cpp testUgridReader.cxx)
 configure_file(testEdgesLocator.cpp testEdgesLocator.cxx)
 configure_file(testUgridEdgeReader.cpp testUgridEdgeReader.cxx)
 configure_file(testGrid.cpp testGrid.cxx)
 configure_file(testRegridEdgesFromUgrid.cpp testRegridEdgesFromUgrid.cxx)
 
+add_executable(testVtkUgridAdaptor testVtkUgridAdaptor.cxx)
+target_link_libraries(testVtkUgridAdaptor
+                      mint
+                      ${VTK_LIBRARIES}
+                      ${NETCDF_LIBRARIES}
+)
 add_executable(testUgridReader testUgridReader.cxx)
 target_link_libraries(testUgridReader
                       mint
@@ -171,6 +178,7 @@ target_link_libraries(testCmdLineArgParserFB
 )
 
 
+add_test(NAME vtkUgridAdaptor COMMAND testVtkUgridAdaptor)
 add_test(NAME ugridReader COMMAND testUgridReader)
 add_test(NAME edgesLocator COMMAND testEdgesLocator)
 add_test(NAME ugridEdgeReader COMMAND testUgridEdgeReader)

@@ -32,6 +32,7 @@ VtkUgridAdaptor::VtkUgridAdaptor(const UgridReader& ur) {
 
     size_t ncells = ur.getNumberOfFaces();
     this->vGrid->Allocate(ncells, 1);
+    this->vGrid->SetPoints(this->vPoints);
 
     for (vtkIdType iFace = 0; iFace < ncells; ++iFace) {
 
