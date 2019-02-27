@@ -162,6 +162,12 @@ UgridReader::readPoints(int ncid) {
         this->points[LON_INDEX + NUM_SPACE_DIMS*i] = lons[i];
         this->points[LAT_INDEX + NUM_SPACE_DIMS*i] = lats[i];
         this->points[ELV_INDEX + NUM_SPACE_DIMS*i] = 0.0; // no elevation at this point
+
+        for (size_t j = 0; j < NUM_SPACE_DIMS; ++j) {
+            double p = this->points[j + NUM_SPACE_DIMS*i];
+            this->xmin[j] = (p < this->xmin[j]? p: this->xmin[j]);
+            this->xmax[j] = (p > this->xmax[j]? p: this->xmax[j]);
+        }
     }
 
     return 0;
