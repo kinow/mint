@@ -55,6 +55,15 @@ size_t getNumberOfPoints() const {
 
 
 /**
+ * Get pointer to the point Ids
+ * @param face Id
+ * @return pointer
+ */
+const long long* getFacePointIds(long long faceId) const {
+    return &this->face2Points[faceId*4];
+}
+
+/**
  * Get pointer to the edge Ids
  * @param face Id 
  * @return pointer
@@ -86,14 +95,14 @@ const double* getPoint(long long pointId) const {
  * @param edgeId edge Id
  * @return the two points with 360 added/substracted to minimize the edge length
  */
-std::vector< Vector<double> > getEdgePointsRegularized(long long edgeId);
+std::vector< Vector<double> > getEdgePointsRegularized(long long edgeId) const;
 
 /**
  * Get the regularized points of the face
  * @param faceId face Id
  * @return the four points with 360 added/substracted to make the cell have a positive area
  */
-std::vector< Vector<double> > getFacePointsRegularized(long long faceId);
+std::vector< Vector<double> > getFacePointsRegularized(long long faceId) const;
 
 /**
  * Get min/max range of the domain
@@ -114,7 +123,7 @@ int load(const std::string& filename);
  * Get the face vertex coordinates
  * @return array of points
  */
-std::set< Vector<double> > getFacePoints(long long faceId) const;
+std::vector< Vector<double> > getFacePoints(long long faceId) const;
 
 /**
  * Get the edge vertex coordinates
@@ -124,6 +133,9 @@ std::vector< Vector<double> > getEdgePoints(long long edgeId) const;
 
 
 private:
+
+    // face to node connectivity
+    std::vector<long long> face2Points;
 
     // face to edge connectivity
     std::vector<long long> face2Edges;

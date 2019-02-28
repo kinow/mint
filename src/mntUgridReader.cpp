@@ -10,21 +10,16 @@
 #define ELV_INDEX 2
 
 
-std::set< Vector<double> > 
+std::vector< Vector<double> > 
 UgridReader::getFacePoints(long long faceId) const {
 
-    std::set< Vector<double> > res;
+    const long long* pointIds = this->getFacePointIds(faceId);
+    std::vector< Vector<double> > res(4);
 
-    // iterate over the 4 edges
+    // iterate over the 4 points
     for (size_t i = 0; i < 4; ++i) {
-
-        // get the edge id
-        long long edgeId = this->face2Edges[i + faceId*4];
-
-        // iterate over the points spanning the edge
-        for (auto point : this->getEdgePoints(edgeId)) {
-            res.insert(point);
-        }
+        const double* p = this->getPoint(pointIds[i]);
+        res[i] = Vector<double>(p, p + NUM_SPACE_DIMS);
     }
 
     return res;
@@ -108,15 +103,23 @@ UgridReader::load(const std::string& filename) {
     }
     this->numFaces = n / 4;
 
+    varid = this->findVariableIdWithAttribute(ncid, 
+                  "cf_role", "face_node_connectivity", &n);
+    this->face2Points.resize(n);
+    ier = nc_get_var_longlong(ncid, varid, &this->face2Points[0]);
+    // we're using zero based indexing
+    startIndex = 0;
+    nc_get_att_int(ncid, varid, "start_index", &startIndex);
+    for (size_t i = 0; i < n; ++i) {
+        this->face2Points[i] -= startIndex;
+    }
+
     // close the netcdf file
     ier = nc_close(ncid);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: cannot close file\n";
         return 1;
     }
-
-    this->fixPeriodicity();
-
     return 0;
 }
 
@@ -230,57 +233,45 @@ UgridReader::findVariableIdWithAttribute(int ncid,
 }
 
 std::vector< Vector<double> > 
-UgridReader::getFacePointsRegularized(long long faceId) {
+UgridReader::getFacePointsRegularized(long long faceId) const {
 
-    std::vector< Vector<double> > res(4);
-
-    const long long* edgeIds = this->getFaceEdgeIds(faceId);
-    std::set<long long> pointIds;
-    for (int i = 0; i < 4; ++i) {
-        long long edgeId = edgeIds[i];
-        const long long* ptIds = this->getEdgePointIds(edgeId);
-        for (int j = 0; j < 2; ++j) {
-            pointIds.insert(ptIds[j]);
-        }
-    }
-
-    int i = 0;
-    for (auto pId : pointIds) {
-        const double* p = this->getPoint(pId);
-        res[i] = Vector<double>(p, p + NUM_SPACE_DIMS);
-    }
+    std::vector< Vector<double> > res = this->getFacePoints(faceId);
 
     // regularize
-    for (size_t i = 1; i < 4; ++i) {
+    for (size_t i = 1; i < res.size(); ++i) {
 
         // add/subtract 360 
         double dLon = res[i][LON_INDEX] - res[0][LON_INDEX];
-        double dLonsPM360[] = {dLon - 360., dLon, dLon + 360.};
+        double dLonsPM360[] = {std::abs(dLon - 360.), 
+                               std::abs(dLon       ), 
+                               std::abs(dLon + 360.)};
         double* minDLon = std::min_element(&dLonsPM360[0], &dLonsPM360[3]);
         int indexMin = (int) std::distance(dLonsPM360, minDLon);
         res[i][LON_INDEX] += (indexMin - 1)*360.0;
+   }
 
-        // if on pole then set the longitude to be that of the base node
-        if (std::abs(res[i][LAT_INDEX]) == 90.) {
-            res[i][LON_INDEX] = res[0][LON_INDEX];
+    int indexPole = -1;
+    double avgLon = 0.;
+    for (size_t i = 0; i < res.size(); ++i) {
+        // detect if node is on/near pole
+        if (std::abs(std::abs(res[i][LAT_INDEX]) -  90.) < 1.e-12) {
+            indexPole = i;
+        }
+        else {
+            avgLon += res[i][LON_INDEX];
         }
     }
+    avgLon /= 3.;
 
-    // order the points to go anticlockwise
-    Vector<double> dp10 = res[1] - res[0];
-    Vector<double> dp20 = res[2] - res[0];
-    Vector<double> dp30 = res[3] - res[0];
-    if (dp10[LON_INDEX]*dp20[LAT_INDEX] - dp10[LAT_INDEX]*dp20[LON_INDEX] < 0.) {
-        // swap 1 <-> 2
-        Vector<double> tmp = res[1];
-        res[1] = res[2];
-        res[2] = tmp;
-    }
-    if (dp20[LON_INDEX]*dp30[LAT_INDEX] - dp20[LAT_INDEX]*dp30[LON_INDEX] < 0.) {
-        // swap 2 <-> 3
-        Vector<double> tmp = res[2];
-        res[2] = res[3];
-        res[3] = tmp;
+    if (indexPole >= 0) {
+        // longitude at the pole is ill defined - we can set it to any
+        // value.
+        if (avgLon > 180.0) {
+            res[indexPole][LON_INDEX] = 270.0;
+        }
+        else {
+            res[indexPole][LON_INDEX] = 90.0;
+        }
     }
 
     return res;
@@ -288,7 +279,7 @@ UgridReader::getFacePointsRegularized(long long faceId) {
 
 
 std::vector< Vector<double> > 
-UgridReader::getEdgePointsRegularized(long long edgeId) {
+UgridReader::getEdgePointsRegularized(long long edgeId) const {
 
     const long long* ptIds = this->getEdgePointIds(edgeId);
     const double* p0 = this->getPoint(ptIds[0]);
@@ -300,13 +291,13 @@ UgridReader::getEdgePointsRegularized(long long edgeId) {
 
     // fix the longitude to minimize the edge length
     double dLon = p1[LON_INDEX] - p0[LON_INDEX];
-    double dLonsPM360[] = {dLon - 360., dLon, dLon + 360.};
+    double dLonsPM360[] = {std::abs(dLon - 360.), std::abs(dLon), std::abs(dLon + 360.)};
     double* minDLon = std::min_element(&dLonsPM360[0], &dLonsPM360[3]);
     int indexMin = (int) std::distance(dLonsPM360, minDLon);
     res[1][LON_INDEX] += (indexMin - 1)*360.0;
 
     // fix the latitude to minimize the edge length
-    if (std::abs(res[0][LAT_INDEX]) == 90.) {
+    if (std::abs(std::abs(res[0][LAT_INDEX]) - 90.) < 1.e-12) {
         // lon is not well defined at the pole, choose to be the same as the other lon
         res[0][LON_INDEX] = res[1][LON_INDEX];
     }
@@ -318,56 +309,4 @@ UgridReader::getEdgePointsRegularized(long long edgeId) {
     return res;
 }
 
-
-void
-UgridReader::fixPeriodicity() {
-
-    std::vector<double> newPoints;
-    newPoints.reserve(this->numPoints/10);
-
-    for (size_t edgeId = 0; edgeId < this->numEdges; ++edgeId) {
-
-        const long long* pointIds = this->getEdgePointIds(edgeId);
-
-        const double* p0 = this->getPoint(pointIds[0]);
-        const double* p1 = this->getPoint(pointIds[1]);
-        
-        double dLon = p1[LON_INDEX] - p0[LON_INDEX];
-        const double dLonsPM360[] = {dLon - 360., dLon, dLon + 360};
-
-        const double* minDLon = std::min_element(&dLonsPM360[0], &dLonsPM360[3]);
-        int indexMin = (int) std::distance(dLonsPM360, minDLon);
-
-        if (indexMin != 1) {
-
-            // needs a correction
-
-            // point Id of the new vertex
-            size_t newPointId = (this->points.size() + newPoints.size()) / NUM_SPACE_DIMS;
-
-            // new vertex
-            Vector<double> newPoint(p1, p1 + NUM_SPACE_DIMS);
-
-            // apply periodic correction
-            newPoint[LON_INDEX] += (indexMin - 1)*360.0;
-
-            // update min/max of domain
-            double lon = newPoint[LON_INDEX];
-            this->xmin[LON_INDEX] = (lon < this->xmin[LON_INDEX]? lon: this->xmin[LON_INDEX]);
-            this->xmax[LON_INDEX] = (lon > this->xmax[LON_INDEX]? lon: this->xmax[LON_INDEX]);
-
-            for (size_t j = 0; j < NUM_SPACE_DIMS; ++j) {
-                newPoints.push_back(newPoint[j]);
-            }
-
-            // update the edge to node connectivity
-            this->edge2Points[1 + edgeId*2] = newPointId;
-        }
-
-    }
-
-    // now insert the new points
-    this->points.insert(this->points.end(), newPoints.begin(), newPoints.end());
-
-}
 
