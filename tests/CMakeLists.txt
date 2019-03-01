@@ -6,6 +6,7 @@ include_directories(
 
 configure_file(testVtkUgridAdaptor.cpp testVtkUgridAdaptor.cxx)
 configure_file(testUgridReader.cpp testUgridReader.cxx)
+configure_file(testFacesLocator.cpp testFacesLocator.cxx)
 configure_file(testEdgesLocator.cpp testEdgesLocator.cxx)
 configure_file(testUgridEdgeReader.cpp testUgridEdgeReader.cxx)
 configure_file(testGrid.cpp testGrid.cxx)
@@ -23,6 +24,12 @@ target_link_libraries(testUgridReader
                       ${VTK_LIBRARIES}
                       ${NETCDF_LIBRARIES}
 )
+add_executable(testFacesLocator testFacesLocator.cxx)
+target_link_libraries(testFacesLocator
+                      mint
+                      ${VTK_LIBRARIES}
+                      ${NETCDF_LIBRARIES}
+ )
 add_executable(testEdgesLocator testEdgesLocator.cxx)
 target_link_libraries(testEdgesLocator
                       mint
@@ -180,6 +187,7 @@ target_link_libraries(testCmdLineArgParserFB
 
 add_test(NAME vtkUgridAdaptor COMMAND testVtkUgridAdaptor)
 add_test(NAME ugridReader COMMAND testUgridReader)
+add_test(NAME facesLocator COMMAND testFacesLocator)
 add_test(NAME edgesLocator COMMAND testEdgesLocator)
 add_test(NAME ugridEdgeReader COMMAND testUgridEdgeReader)
 add_test(NAME regridEdgesF
