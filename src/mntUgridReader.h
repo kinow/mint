@@ -111,25 +111,7 @@ std::vector< Vector<double> > getFacePointsRegularized(long long faceId) const;
  * @param tol tolerance
  * @return true/false
  */
-bool containsPoint(long long faceId, const double point[], double tol) const {
-    double circ = 0;
-    std::vector< Vector<double> > vertices = getFacePointsRegularized(faceId);
-    for (size_t i0 = 0; i0 < 4; ++i0) {
-        size_t i1 = (i0 + 1) % 4;
-        double v0[] = {point[0] - vertices[i0][0], point[1] - vertices[i0][1]};
-        double v1[] = {point[0] - vertices[i1][0], point[1] - vertices[i1][1]};
-        double cross = v0[0]*v1[1] - v0[1]*v1[0];
-        double dot = v0[0]*v1[0] + v0[1]*v1[1];
-        circ += atan2(cross, dot);
-    }
-    circ /= (2.0 * M_PI);
-    if (std::abs(circ - 1.0) < tol) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
+bool containsPoint(long long faceId, const double point[], double tol) const;
 
 /**
  * Get min/max range of the domain

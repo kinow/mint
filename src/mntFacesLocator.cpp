@@ -88,6 +88,7 @@ FacesLocator::getFace(const double point[], double xi[]) const {
     int j = iPos[1];
     if (i < 0 || j < 0) {
         // outside domain
+        std::cerr << "*** outside iPos = " << iPos << '\n';
         return -1;
     }
 
@@ -97,15 +98,24 @@ FacesLocator::getFace(const double point[], double xi[]) const {
     // find the bucket
     std::map<size_t, std::vector<vtkIdType> >::const_iterator it = this->buckets.find(k);
     if (it == this->buckets.end()) {
-        // outside 
+        // outside
         return -1;
     }
 
     vtkIdType res = -1;
-    const double tol = 1.e-3;
+    const double tol = 1.e-12;
+
+
     // iterate over the faces in this bucket
-    for (auto faceId : it->second) {
+    bool found = false;
+    std::vector<vtkIdType>::const_iterator fit = it->second.begin();
+
+    while (! found && fit != it->second.end()) {
+
+        vtkIdType faceId = *fit;
+
         if (this->ugrid->containsPoint(faceId, point, tol)) {
+
             // found!
             res = faceId;
             std::vector< Vector<double> > points = this->ugrid->getFacePointsRegularized(faceId);
@@ -117,8 +127,10 @@ FacesLocator::getFace(const double point[], double xi[]) const {
 
             this->quad->EvaluatePosition((double*) point, closestPoint, subId, xi, dist2, weights);
 
-            break;
+            found = true;
         }
+
+        fit++;
     }
 
     return res;
