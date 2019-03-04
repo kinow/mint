@@ -18,6 +18,7 @@ void test4() {
     fl.build(ur, numFacesPerBucket);
 
     double p0[3], p1[3];
+    Vector<double> xi(3, 0.); // always 3d?
 
     size_t ncases = 3;
     // start/end points
@@ -43,6 +44,10 @@ void test4() {
                 std::cout << points[j] << " ; ";
             }
             std::cout << '\n';
+
+            vtkIdType faceId2 = fl.getFace(&points[0][0], &xi[0]);
+            std::cout << " point " << points[0] << " belongs to face " << faceId2 << " (param coords: " << xi << ")\n";
+            assert(faceId2 >= 0);
         }
     }
 }
