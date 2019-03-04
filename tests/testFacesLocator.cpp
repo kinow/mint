@@ -36,9 +36,9 @@ void test4() {
               << pa[0] << ',' << pa[1] << ',' << pa[2] << " -> "
               << pb[0] << ',' << pb[1] << ',' << pb[2] << '\n';
 
-        for (auto ift = faceIds.begin(); ift != faceIds.end(); ++ift) {
-            std::vector< Vector<double> > points = ur.getFacePointsRegularized(*ift);
-            std::cout << "face Id " << *ift << " points ";
+        for (auto faceId : faceIds) {
+            std::vector< Vector<double> > points = ur.getFacePointsRegularized(faceId);
+            std::cout << "face Id " << faceId << " points ";
             for (size_t j = 0; j < points.size(); ++j) {
                 std::cout << points[j] << " ; ";
             }
