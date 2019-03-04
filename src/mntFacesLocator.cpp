@@ -6,6 +6,7 @@
 
 
 FacesLocator::FacesLocator() {
+    this->ugrid = 0;
 }
 
 FacesLocator::~FacesLocator() {
@@ -13,6 +14,8 @@ FacesLocator::~FacesLocator() {
 
 void
 FacesLocator::build(const UgridReader& ur, int numFacesPerBucket) {
+
+    this->ugrid = &ur;
 
     size_t numFaces = ur.getNumberOfFaces();
 
@@ -62,10 +65,44 @@ FacesLocator::getFacesAlongLine(const double pBeg[], const double pEnd[]) const 
     return faceIds;
 }
 
+vtkIdType 
+FacesLocator::getFace(const double point[]) const {
+
+    Vector<int> iPos = this->getBucketCellLoc(point);
+    int i = iPos[0];
+    int j = iPos[1];
+    if (i < 0 || j < 0) {
+        // outside domain
+        return -1;
+    }
+
+    // bucket index 
+    size_t k = i * this->nBuckets + j;
+    std::map<size_t, std::vector<vtkIdType> >::const_iterator it = this->buckets.find(k);
+    if (it == this->buckets.end()) {
+        // outside 
+        return -1;
+    }
+
+    vtkIdType res = -1;
+    const double tol = 1.e-3;
+    for (auto faceId : it->second) {
+        if (this->ugrid->containsPoint(faceId, point, tol)) {
+            res = faceId;
+        }
+    }
+
+    return res;
+}
+
 std::set<size_t>
 FacesLocator::getBucketsAlongLine(const double pBeg[], const double pEnd[]) const {
 
     // required to test if a line has any chance of intersecting a cell
+    // Because the algorithm is based on computing the shortest distance 
+    // of the line to the centre of a bucket, we need to account for the cases
+    // where the point on the line closest to the centre is outside but the line
+    // is still intersecting the bucket. The "halo" parameter takes care of this. 
     const double halo = 0.12;
     std::set<size_t> res;
 

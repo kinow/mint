@@ -58,8 +58,17 @@ void build(const UgridReader& ur, int numFacesPerBucket);
  */
 std::set<vtkIdType> getFacesAlongLine(const double pBeg[], const double pEnd[]) const;
 
+/** 
+ * Get the face that contains a point
+ * @param point point
+ * @return face ID
+ */
+vtkIdType getFace(const double point[]) const;
+
 
 private:
+
+    const UgridReader* ugrid;
 
     // domain low point and size
     Vector<double> xmin;

@@ -4,6 +4,7 @@ include_directories(
 )
 
 set(LIB_FILES
+  #mntPolysegmentIter2.cpp
   mntFacesLocator.cpp
   mntVtkUgridAdaptor.cpp
   mntUgridReader.cpp
@@ -33,6 +34,7 @@ set(LIB_FILES
 )
 
 set(HEADER_FILES
+  #mntPolysegmentIter2.h
   mntFacesLocator.h
   mntVtkUgridAdaptor.h
   mntUgridReader.h
