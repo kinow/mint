@@ -7,9 +7,11 @@
 
 FacesLocator::FacesLocator() {
     this->ugrid = 0;
+    this->quad = vtkQuad::New();
 }
 
 FacesLocator::~FacesLocator() {
+    this->quad->Delete();
 }
 
 void
@@ -66,7 +68,12 @@ FacesLocator::getFacesAlongLine(const double pBeg[], const double pEnd[]) const 
 }
 
 vtkIdType 
-FacesLocator::getFace(const double point[]) const {
+FacesLocator::getFace(const double point[], double xi[]) const {
+
+    double* closestPoint = NULL;
+    int subId;
+    double dist2;
+    double weights[4]; // quad
 
     Vector<int> iPos = this->getBucketCellLoc(point);
     int i = iPos[0];
@@ -91,7 +98,17 @@ FacesLocator::getFace(const double point[]) const {
     // iterate over the faces in this bucket
     for (auto faceId : it->second) {
         if (this->ugrid->containsPoint(faceId, point, tol)) {
+            // found!
             res = faceId;
+            std::vector< Vector<double> > points = this->ugrid->getFacePointsRegularized(faceId);
+
+            this->quad->GetPoints()->SetPoint(0, &points[0][0]);
+            this->quad->GetPoints()->SetPoint(1, &points[1][0]);
+            this->quad->GetPoints()->SetPoint(2, &points[2][0]);
+            this->quad->GetPoints()->SetPoint(3, &points[3][0]);
+
+            this->quad->EvaluatePosition((double*) point, closestPoint, subId, xi, dist2, weights);
+
             break;
         }
     }

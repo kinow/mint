@@ -2,6 +2,9 @@
 #include <set>
 #include <algorithm>
 
+#include <vtkQuad.h>
+#include <vtkPoints.h>
+
 #include "MvVector.h"
 #include "mntUgridReader.h"
 #include <map>
@@ -61,14 +64,16 @@ std::set<vtkIdType> getFacesAlongLine(const double pBeg[], const double pEnd[]) 
 /** 
  * Get the face that contains a point
  * @param point point
+ * @param xi parametric coordinates (output)
  * @return face ID
  */
-vtkIdType getFace(const double point[]) const;
+vtkIdType getFace(const double point[], double xi[]) const;
 
 
 private:
 
     const UgridReader* ugrid;
+    vtkQuad* quad;
 
     // domain low point and size
     Vector<double> xmin;
