@@ -78,6 +78,8 @@ FacesLocator::getFace(const double point[]) const {
 
     // bucket index 
     size_t k = i * this->nBuckets + j;
+
+    // find the bucket
     std::map<size_t, std::vector<vtkIdType> >::const_iterator it = this->buckets.find(k);
     if (it == this->buckets.end()) {
         // outside 
@@ -86,9 +88,11 @@ FacesLocator::getFace(const double point[]) const {
 
     vtkIdType res = -1;
     const double tol = 1.e-3;
+    // iterate over the faces in this bucket
     for (auto faceId : it->second) {
         if (this->ugrid->containsPoint(faceId, point, tol)) {
             res = faceId;
+            break;
         }
     }
 

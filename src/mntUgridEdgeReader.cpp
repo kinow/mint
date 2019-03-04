@@ -69,6 +69,8 @@ UgridEdgeReader::load(const std::string& filename) {
         std::cerr << "ERROR: cannot close file\n";
         return 1;
     }
+
+    return 0;
 }
 
 std::vector<double>

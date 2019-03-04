@@ -105,7 +105,7 @@ std::vector< Vector<double> > getEdgePointsRegularized(long long edgeId) const;
 std::vector< Vector<double> > getFacePointsRegularized(long long faceId) const;
 
 /**
- * Is point inside cell?
+ * Is point inside face?
  * @param faceId face Id
  * @param point point
  * @param tol tolerance
@@ -116,8 +116,8 @@ bool containsPoint(long long faceId, const double point[], double tol) const {
     std::vector< Vector<double> > vertices = getFacePointsRegularized(faceId);
     for (size_t i0 = 0; i0 < 4; ++i0) {
         size_t i1 = (i0 + 1) % 4;
-        double v0[] = {vertices[i0][0] - point[0], vertices[i0][1] - point[1]};
-        double v1[] = {vertices[i1][0] - point[0], vertices[i1][1] - point[1]};
+        double v0[] = {point[0] - vertices[i0][0], point[1] - vertices[i0][1]};
+        double v1[] = {point[0] - vertices[i1][0], point[1] - vertices[i1][1]};
         double cross = v0[0]*v1[1] - v0[1]*v1[0];
         double dot = v0[0]*v1[0] + v0[1]*v1[1];
         circ += atan2(cross, dot);

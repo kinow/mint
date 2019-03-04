@@ -43,6 +43,33 @@ void test16() {
     uer.getRange(xmin, xmax);
     std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] << " -> "
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
+
+    // test containsPoint
+    vtkIdType faceId = 1;
+    double tol = 1.e-6;
+    std::vector< Vector<double> > verts = uer.getFacePointsRegularized(faceId);
+
+    Vector<double> pMid = 0.25*(verts[0] + verts[1] + verts[2] + verts[3]);
+    assert(uer.containsPoint(faceId, &pMid[0], tol));
+
+    Vector<double> dp = verts[0] - pMid;
+
+    Vector<double> p = pMid + 0.9*dp;
+    assert(uer.containsPoint(faceId, &p[0], tol));
+    std::cout << "p = " << p << " is in face: " << uer.containsPoint(faceId, &p[0], tol) << '\n';
+
+    p = pMid + 0.99999*dp;
+    assert(uer.containsPoint(faceId, &p[0], tol));
+    std::cout << "p = " << p << " is in face: " << uer.containsPoint(faceId, &p[0], tol) << '\n';
+
+    p = pMid + 1.00001*dp;
+    assert(!uer.containsPoint(faceId, &p[0], tol));
+    std::cout << "p = " << p << " is in face: " << uer.containsPoint(faceId, &p[0], tol) << '\n';
+
+    p = pMid + 1.2*dp;
+    assert(!uer.containsPoint(faceId, &p[0], tol));
+    std::cout << "p = " << p << " is in face: " << uer.containsPoint(faceId, &p[0], tol) << '\n';
+
 }
 
 int main(int argc, char** argv) {
