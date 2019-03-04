@@ -1,4 +1,5 @@
 #include <mntUgridReader.h>
+#include <mntFacesLocator.h>
 #undef NDEBUG // turn on asserts
 #include <cassert>
 
@@ -34,6 +35,7 @@ void test4() {
 }
 
 void test16() {
+
     UgridReader uer;
     uer.load("${CMAKE_SOURCE_DIR}/data/cs_16.nc");
     std::cout << "Number of points: " << uer.getNumberOfPoints() << '\n';
@@ -43,6 +45,9 @@ void test16() {
     uer.getRange(xmin, xmax);
     std::cout << "Domain range: " << xmin[0] << ',' << xmin[1] << ',' << xmin[2] << " -> "
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
+
+    // locator
+    FacesLocator loc;
 
     // test containsPoint
     vtkIdType faceId = 1;

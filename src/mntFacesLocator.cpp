@@ -19,6 +19,14 @@ FacesLocator::build(const UgridReader& ur, int numFacesPerBucket) {
 
     this->ugrid = &ur;
 
+    this->xmin.resize(NUM_SPACE_DIMS);
+    this->deltas.resize(NUM_SPACE_DIMS);
+    double xmax[NUM_SPACE_DIMS];
+    ur.getRange(&this->xmin[0], &xmax[0]);
+    for (size_t i = 0; i < NUM_SPACE_DIMS; ++i) {
+        this->deltas[i] = xmax[i] - this->xmin[i];
+    }
+
     size_t numFaces = ur.getNumberOfFaces();
 
     // number of buckets in x and y directions

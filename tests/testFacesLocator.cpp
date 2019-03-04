@@ -14,7 +14,6 @@ void test4() {
                                   << xmax[0] << ',' << xmax[1] << ',' << xmax[2] << '\n';
 
     FacesLocator fl;
-    fl.setRange(xmin, xmax);
     int numFacesPerBucket = 1;
     fl.build(ur, numFacesPerBucket);
 

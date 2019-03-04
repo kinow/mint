@@ -33,20 +33,6 @@ FacesLocator();
 
 
 /**
- * Set the domain range
- * @param xmin low end
- * @param xmax high end
- */
-void setRange(const double xmin[], const double xmax[]) {
-    this->xmin.resize(NUM_SPACE_DIMS);
-    this->deltas.resize(NUM_SPACE_DIMS);
-    for (size_t i = 0; i < NUM_SPACE_DIMS; ++i) {
-        this->xmin[i] = xmin[i];
-        this->deltas[i] = xmax[i] - xmin[i];
-    }
-}
-
-/**
  * Build the edge locator
  * @param ur instance of UgridReader
  * @param numFacesPerBucket average number of faces per bucket
