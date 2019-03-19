@@ -236,7 +236,7 @@ int main() {
 
     test1();
 
-    // crashe when buildkng the cell locator
+    // crashes when building vtkCellLocator
     //regridTest("tiny1x2_1x1", "@CMAKE_SOURCE_DIR@/data/tiny1x2.nc", "@CMAKE_SOURCE_DIR@/data/tiny1x1.nc");
     //regridTest("tiny1x1_1x2", "@CMAKE_SOURCE_DIR@/data/tiny1x1.nc", "@CMAKE_SOURCE_DIR@/data/tiny1x2.nc");
 
