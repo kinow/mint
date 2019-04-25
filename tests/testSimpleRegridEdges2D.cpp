@@ -53,9 +53,9 @@ int main() {
           0
     */
 
-    //test("@CMAKE_SOURCE_DIR@/data/tiny1x1.nc:physics", 
-    //     "@CMAKE_SOURCE_DIR@/data/tiny1x1.nc:physics",
-    //     "weightsTiny1x1_to_tiny1x1.nc");
+    test("@CMAKE_SOURCE_DIR@/data/tiny1x1.nc:physics", 
+         "@CMAKE_SOURCE_DIR@/data/tiny1x1.nc:physics",
+         "weightsTiny1x1_to_tiny1x1.nc");
 
     /*
     tiny1x1 -> tiny1x2
@@ -74,6 +74,13 @@ int main() {
     test("@CMAKE_SOURCE_DIR@/data/tiny1x1.nc:physics", 
          "@CMAKE_SOURCE_DIR@/data/tiny1x2.nc:physics",
          "weightsTiny1x1_to_tiny1x2.nc");
+
+    // go the other way
+
+    test("@CMAKE_SOURCE_DIR@/data/tiny1x2.nc:physics", 
+         "@CMAKE_SOURCE_DIR@/data/tiny1x1.nc:physics",
+         "weightsTiny1x2_to_tiny1x1.nc");
+
 
 
 }
