@@ -344,6 +344,30 @@ int mnt_regridedges2d_getNumDstEdges(RegridEdges2D_t** self, size_t* nPtr) {
 }
 
 extern "C"
+int mnt_regridedges2d_getSrcEdgePointsRegularized(RegridEdges2D_t** self, size_t srcEdgeId,
+                                                  double p0[], double p1[]) {
+
+    std::vector< Vector<double> > points = (*self)->srcGrid.getEdgePointsRegularized(srcEdgeId);
+    for (size_t i = 0; i < 3; ++i) {
+        p0[i] = points[0][i];
+        p1[i] = points[1][i];
+    }
+    return 0;
+}
+
+extern "C"
+int mnt_regridedges2d_getDstEdgePointsRegularized(RegridEdges2D_t** self, size_t dstEdgeId,
+                                                  double p0[], double p1[]) {
+
+    std::vector< Vector<double> > points = (*self)->dstGrid.getEdgePointsRegularized(dstEdgeId);
+    for (size_t i = 0; i < 3; ++i) {
+        p0[i] = points[0][i];
+        p1[i] = points[1][i];
+    }
+    return 0;
+}
+
+extern "C"
 int mnt_regridedges2d_apply(RegridEdges2D_t** self, 
 	                        const double src_data[], double dst_data[]) {
 

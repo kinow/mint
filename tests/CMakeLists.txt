@@ -8,6 +8,7 @@ configure_file(testSimpleRegridEdges2D.cpp testSimpleRegridEdges2D.cxx)
 configure_file(testUgridLocator.cpp testUgridLocator.cxx)
 configure_file(testNetcdf.cpp testNetcdf.cxx)
 configure_file(testUgrid2D.cpp testUgrid2D.cxx)
+configure_file(testRegridEdges2D.cpp testRegridEdges2D.cxx)
 configure_file(testRegridEdgesFromUgrid.cpp testRegridEdgesFromUgrid.cxx)
 configure_file(testGrid.cpp testGrid.cxx)
 configure_file(testRegridEdgesFromUgrid.cpp testRegridEdgesFromUgrid.cxx)
@@ -42,6 +43,13 @@ target_link_libraries(testSimpleRegridEdges2D
 
 add_executable(testSimpleRegridEdges testSimpleRegridEdges.cxx)
 target_link_libraries(testSimpleRegridEdges
+                    mint
+                    ${VTK_LIBRARIES}
+                    ${NETCDF_LIBRARIES} ${HDF5_HL_LIBRARIES} ${HDF5_LIBRARIES} ${CURL_LIBRARIES}
+)
+
+add_executable(testRegridEdges2D testRegridEdges2D.cxx)
+target_link_libraries(testRegridEdges2D
                     mint
                     ${VTK_LIBRARIES}
                     ${NETCDF_LIBRARIES} ${HDF5_HL_LIBRARIES} ${HDF5_LIBRARIES} ${CURL_LIBRARIES}
@@ -183,6 +191,7 @@ add_test(NAME netcdf COMMAND testNetcdf)
 add_test(NAME ugrid2D COMMAND testUgrid2D)
 add_test(NAME simpleRegridEdges2D COMMAND testSimpleRegridEdges2D)
 add_test(NAME simpleRegridEdges COMMAND testSimpleRegridEdges)
+add_test(NAME regridEdgesFrom2D COMMAND testRegridEdges2D)
 add_test(NAME regridEdgesFromUgrid COMMAND testRegridEdgesFromUgrid)
 add_test(NAME polylineParser COMMAND testPolylineParser)
 add_test(NAME lineGridIntersector COMMAND testLineGridIntersector)

@@ -99,6 +99,7 @@ int mnt_regridedges2d_build(RegridEdges2D_t** self, int numCellsPerBucket);
 /**
  * Get number of unique edges in the source grid
  * @param n number (output)
+ * @return error code (0 is OK)
  */
 extern "C"
 int mnt_regridedges2d_getNumSrcEdges(RegridEdges2D_t** self, size_t* n);
@@ -106,10 +107,32 @@ int mnt_regridedges2d_getNumSrcEdges(RegridEdges2D_t** self, size_t* n);
 /**
  * Get number of unique edges in the destination grid
  * @param n number (output)
+ * @return error code (0 is OK)
  */
 extern "C"
 int mnt_regridedges2d_getNumDstEdges(RegridEdges2D_t** self, size_t* n);
 
+/**
+ * Get the source grid edge points, adding/subtracting 360 if need be
+ * @param srcEdgeId source grid edge Id
+ * @param p0 starting point (output)
+ * @param p1 end point (output)
+ * @return error code (0 is OK)
+ */
+extern "C"
+int mnt_regridedges2d_getSrcEdgePointsRegularized(RegridEdges2D_t** self, size_t srcEdgeId,
+                                                  double p0[], double p1[]);
+
+/**
+ * Get the destination grid edge points, adding/subtracting 360 if need be
+ * @param srcEdgeId source grid edge Id
+ * @param p0 starting point (output)
+ * @param p1 end point (output)
+ * @return error code (0 is OK)
+ */
+extern "C"
+int mnt_regridedges2d_getDstEdgePointsRegularized(RegridEdges2D_t** self, size_t dstEdgeId,
+                                                  double p0[], double p1[]);
 
 /**
  * Apply interpolation weights to edge field with unique edge Ids
