@@ -64,6 +64,15 @@ for j0 in range(numLat):
 		p1 = i + j1*numLon1
 		edge2point[iedge, :] = p0, p1
 
+# nodal points
+lons = numpy.zeros((numLon1*numLat1), numpy.float64)
+lats = numpy.zeros((numLon1*numLat1), numpy.float64)
+dLon, dLat = 360./numLon, 180./numLat
+for j in range(numLat1):
+	for i in range(numLon1):
+		k = i + j*numLon1
+		lons[k] = 0.0 + i*dLon
+		lats[k] = -90.0 + j*dLat
 
 nc = netCDF4.Dataset(args.o, 'w', format="NETCDF4")
 
@@ -98,6 +107,16 @@ edge2pointVar = nc.createVariable("{}_edge_nodes".format(meshName), "int", ("num
 edge2pointVar.cf_role = "edge_node_connectivity"
 edge2pointVar.start_index = 0
 edge2pointVar[:] = edge2point
+
+xVar = nc.createVariable("{}_node_x".format(meshName), "f8", ("numPoints",))
+xVar.standard_name = "longitude"
+xVar.units = "degrees_east"
+xVar[:] = lons
+
+yVar = nc.createVariable("{}_node_y".format(meshName), "f8", ("numPoints",))
+yVar.standard_name = "latitude"
+yVar.units = "degrees_north"
+yVar[:] = lats
 
 # close
 nc.close()
