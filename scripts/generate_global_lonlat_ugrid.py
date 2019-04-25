@@ -48,7 +48,7 @@ for j0 in range(numLat):
 
 # x edges
 for j in range(numLat1):
-	for i0 in range(numLat):
+	for i0 in range(numLon):
 		i1 = i0 + 1
 		iedge = i0 + j*numLon
 		p0 = i0 + j*numLon1
@@ -58,7 +58,7 @@ for j in range(numLat1):
 # y edges
 for j0 in range(numLat):
 	j1 = j0 + 1
-	for i in range(numLat1):
+	for i in range(numLon1):
 		iedge = i + j0*numLon1 + numLon*numLat1
 		p0 = i + j0*numLon1
 		p1 = i + j1*numLon1
