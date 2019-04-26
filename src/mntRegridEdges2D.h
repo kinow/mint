@@ -16,10 +16,8 @@ struct RegridEdges2D_t {
     Ugrid2D srcGrid;
     Ugrid2D dstGrid;
 
-    // weights
-    std::vector<long long> weightSrcEdgeIds;
-    std::vector<long long> weightDstEdgeIds;
-    std::vector<double> weights;
+    // (dstEdgeId, srcEdgeId) -> weights
+    std::map< std::pair<size_t, size_t>, double > weights;
 
     size_t numSrcEdges;
     size_t numDstEdges;

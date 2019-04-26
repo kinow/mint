@@ -24,7 +24,7 @@ void regridEdgeFieldTest(const std::string& testName, const std::string& srcFile
     ier = mnt_regridedges2d_loadDstGrid(&rg, dstFile.c_str(), (int) dstFile.size());
     assert(ier == 0);
 
-    int numCellsPerBucket = 8;
+    int numCellsPerBucket = 1;
     
     assert(ier == 0);
     ier = mnt_regridedges2d_build(&rg, numCellsPerBucket);
@@ -90,6 +90,8 @@ void regridEdgeFieldTest(const std::string& testName, const std::string& srcFile
 
 int main() {
 
+	/*
+    regridEdgeFieldTest("lon-lat3x2->2x1", "@CMAKE_SOURCE_DIR@/data/global3x2.nc:physics", "@CMAKE_SOURCE_DIR@/data/global2x1.nc:physics");
     regridEdgeFieldTest("lon-lat3x2->1x1", "@CMAKE_SOURCE_DIR@/data/global3x2.nc:physics", "@CMAKE_SOURCE_DIR@/data/global1x1.nc:physics");
 
     regridEdgeFieldTest("lon-lat1x1->1x1", "@CMAKE_SOURCE_DIR@/data/global1x1.nc:physics", "@CMAKE_SOURCE_DIR@/data/global1x1.nc:physics");
@@ -97,10 +99,10 @@ int main() {
     regridEdgeFieldTest("lon-lat1x1->2x1", "@CMAKE_SOURCE_DIR@/data/global1x1.nc:physics", "@CMAKE_SOURCE_DIR@/data/global2x1.nc:physics");
     regridEdgeFieldTest("lon-lat1x2->2x1", "@CMAKE_SOURCE_DIR@/data/global1x2.nc:physics", "@CMAKE_SOURCE_DIR@/data/global2x1.nc:physics");
     regridEdgeFieldTest("lon-lat2x1->2x1", "@CMAKE_SOURCE_DIR@/data/global2x1.nc:physics", "@CMAKE_SOURCE_DIR@/data/global2x1.nc:physics");
-
+    */
     regridEdgeFieldTest("cubed-sphere4->4", "@CMAKE_SOURCE_DIR@/data/cs_4.nc:physics", "@CMAKE_SOURCE_DIR@/data/cs_4.nc:physics");
-    regridEdgeFieldTest("cubed-sphere16->4", "@CMAKE_SOURCE_DIR@/data/cs_16.nc:physics", "@CMAKE_SOURCE_DIR@/data/cs_4.nc:physics"); 
-    regridEdgeFieldTest("cubed-sphere16->16", "@CMAKE_SOURCE_DIR@/data/cs_16.nc:physics", "@CMAKE_SOURCE_DIR@/data/cs_16.nc:physics"); 
+    //regridEdgeFieldTest("cubed-sphere16->4", "@CMAKE_SOURCE_DIR@/data/cs_16.nc:physics", "@CMAKE_SOURCE_DIR@/data/cs_4.nc:physics"); 
+    //regridEdgeFieldTest("cubed-sphere16->16", "@CMAKE_SOURCE_DIR@/data/cs_16.nc:physics", "@CMAKE_SOURCE_DIR@/data/cs_16.nc:physics");
 
     return 0;
 }   

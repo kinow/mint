@@ -236,10 +236,7 @@ int mnt_regridedges2d_build(RegridEdges2D_t** self, int numCellsPerBucket) {
         return 2;
     }
 
-    (*self)->weightDstEdgeIds.resize(0);
-    (*self)->weightSrcEdgeIds.resize(0);
-    (*self)->weights.resize(0);
-    // MAY WANT TO RESERVE SPACE
+    (*self)->weights.clear();
 
     Vector<double>  dstXi0(3, 0.0);
     Vector<double>  dstXi1(3, 0.0);
@@ -327,9 +324,9 @@ int mnt_regridedges2d_build(RegridEdges2D_t** self, int numCellsPerBucket) {
                     weight *= (srcXi1[d] - srcXi0[d] < -0.001? -1.0: 1.0);
                 }
 
-                (*self)->weightDstEdgeIds.push_back((long long) dstEdgeId);
-                (*self)->weightSrcEdgeIds.push_back((long long) srcEdgeId);
-                (*self)->weights.push_back(weight);
+                std::pair<size_t, size_t> ds((long long) dstEdgeId, (long long) srcEdgeId);
+                (*self)->weights.insert( std::pair< std::pair<size_t, size_t>, double >(ds, weight) );
+
             }
         }
     }
@@ -392,14 +389,14 @@ int mnt_regridedges2d_apply(RegridEdges2D_t** self,
 
     std::cerr << "... size of weights = " << (*self)->weights.size() << '\n';
     // add the contributions from each src edge
-    for (size_t i = 0; i < (*self)->weights.size(); ++i) {
+    for (const std::pair< std::pair<size_t, size_t>, double >& dsw : (*self)->weights) {
 
-        size_t dstEdgeId = (size_t) (*self)->weightDstEdgeIds[i];
-        size_t srcEdgeId = (size_t) (*self)->weightSrcEdgeIds[i];
-        double weight = (*self)->weights[i];
+        size_t dstEdgeId = dsw.first.first;
+        size_t srcEdgeId = dsw.first.second;
+        double weight = dsw.second;
 
         dst_data[dstEdgeId] += weight * src_data[srcEdgeId];
-        std::cerr << "... dstEdgeId = " << dstEdgeId << " srcEdgeId = " << srcEdgeId << " weight = " << weight << '\n';
+        if (std::abs(weight) > 1.e-10) std::cerr << "... dstEdgeId = " << dstEdgeId << " srcEdgeId = " << srcEdgeId << " weight = " << weight << '\n';
     }
 
     return 0;
@@ -459,26 +456,26 @@ int mnt_regridedges2d_loadWeights(RegridEdges2D_t** self,
         return 7;
     }
 
-    (*self)->weights.resize(numWeights);
-    (*self)->weightDstEdgeIds.resize(numWeights);
-    (*self)->weightSrcEdgeIds.resize(numWeights);
+    std::vector<long long> weightDstEdgeIds(numWeights);
+    std::vector<long long> weightSrcEdgeIds(numWeights);
+    std::vector<double> weights(numWeights);
 
     // read
-    ier = nc_get_var_double(ncid, weightsId, &((*self)->weights)[0]);
+    ier = nc_get_var_double(ncid, weightsId, &(weights)[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not read var \"weights\"!\n";
         std::cerr << nc_strerror (ier);
         nc_close(ncid);
         return 8;
     }
-    ier = nc_get_var_longlong(ncid, dstEdgeIdsId, &((*self)->weightDstEdgeIds)[0]);
+    ier = nc_get_var_longlong(ncid, dstEdgeIdsId, &weightDstEdgeIds[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not read var \"dst_edge_ids\"!\n";
         std::cerr << nc_strerror (ier);
         nc_close(ncid);
         return 9;
     }
-    ier = nc_get_var_longlong(ncid, srcEdgeIdsId, &((*self)->weightSrcEdgeIds)[0]);
+    ier = nc_get_var_longlong(ncid, srcEdgeIdsId, &weightSrcEdgeIds[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not get ID for var \"src_edge_ids\"!\n";
         std::cerr << nc_strerror (ier);
@@ -493,18 +490,37 @@ int mnt_regridedges2d_loadWeights(RegridEdges2D_t** self,
         return 13;
     }
 
+    (*self)->weights.clear();
+    for (size_t i = 0; i < numWeights; ++i) {
+        std::pair<size_t, size_t> ds((size_t) weightDstEdgeIds[i], (size_t) weightSrcEdgeIds[i]);
+        double w = weights[i];
+        (*self)->weights.insert( std::pair< std::pair<size_t, size_t>, double >(ds, w) );
+    }
+
     return 0;
 }
 
 extern "C"
 int mnt_regridedges2d_dumpWeights(RegridEdges2D_t** self, 
-		                        const char* fort_filename, int n) {
+		                         const char* fort_filename, int n) {
 
     // Fortran strings don't come with null-termination character. Copy string 
     // into a new one and add '\0'
     std::string filename = std::string(fort_filename, n);
 
     size_t numWeights = (*self)->weights.size();
+
+    // re-organize the data in three vectors
+    std::vector<long long> weightDstEdgeIds(numWeights);
+    std::vector<long long> weightSrcEdgeIds(numWeights);
+    std::vector<double> weights(numWeights);
+    size_t i = 0;
+    for (const std::pair< std::pair<size_t, size_t>, double >& dsw : (*self)->weights) {
+        weightDstEdgeIds[i] = (long long) dsw.first.first;
+        weightSrcEdgeIds[i] = (long long) dsw.first.second;
+        weights[i] = dsw.second;
+        i++;
+    }
 
     int ncid, ier;
     ier = nc_create(filename.c_str(), NC_CLOBBER|NC_NETCDF4, &ncid);
@@ -563,21 +579,21 @@ int mnt_regridedges2d_dumpWeights(RegridEdges2D_t** self,
         return 8;
     }
 
-    ier = nc_put_var_longlong(ncid, dstEdgeIdsId, &((*self)->weightDstEdgeIds)[0]);
+    ier = nc_put_var_longlong(ncid, dstEdgeIdsId, &weightDstEdgeIds[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not write variable \"dst_edge_ids\"\n";
         std::cerr << nc_strerror (ier);
         nc_close(ncid);
         return 9;
     }
-    ier = nc_put_var_longlong(ncid, srcEdgeIdsId, &((*self)->weightSrcEdgeIds)[0]);
+    ier = nc_put_var_longlong(ncid, srcEdgeIdsId, &weightSrcEdgeIds[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not write variable \"src_edge_ids\"\n";
         std::cerr << nc_strerror (ier);
         nc_close(ncid);
         return 10;
     }
-    ier = nc_put_var_double(ncid, weightsId, &((*self)->weights)[0]);
+    ier = nc_put_var_double(ncid, weightsId, &weights[0]);
     if (ier != NC_NOERR) {
         std::cerr << "ERROR: could not write variable \"weights\"\n";
         std::cerr << nc_strerror (ier);
@@ -603,9 +619,10 @@ int mnt_regridedges2d_print(RegridEdges2D_t** self) {
     std::cout << "Number of weights: " << numWeights << '\n';
 
     printf("     index  dstEdgeId  srcEdgeId          weight\n");
-    for (size_t i = 0; i < numWeights; ++i) {
-        printf("%10ld %10ld %10ld %15.5lf\n", i, (*self)->weightDstEdgeIds[i], 
-            (*self)->weightSrcEdgeIds[i], (*self)->weights[i]);
+    size_t i = 0;
+    for (const std::pair< std::pair<size_t, size_t>, double >& dsw : (*self)->weights) {
+        printf("%10ld %10ld %10ld %15.5lf\n", i, dsw.first.first, dsw.first.second, dsw.second);
+        i++;
     }
 
     return 0;
