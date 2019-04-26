@@ -330,6 +330,17 @@ Ugrid2D::getFacePointsRegularized(size_t faceId) const {
 
     std::vector< Vector<double> > res = this->getFacePoints(faceId);
 
+    bool allNodesInsideDomain = true;
+    for (const Vector<double>& node : res) {
+        allNodesInsideDomain &= node[LON_INDEX] >= 0.0;
+        allNodesInsideDomain &= node[LON_INDEX] <= 360.0;
+    }
+
+    if (allNodesInsideDomain) {
+        // no need to regularize if the nodes are all inside the domain
+        return res;
+    }
+
     // regularize
     for (size_t i = 1; i < res.size(); ++i) {
 
@@ -381,6 +392,12 @@ Ugrid2D::getEdgePointsRegularized(size_t edgeId) const {
     std::vector< Vector<double> > res(2);
     res[0].assign(p0, p0 + NUM_SPACE_DIMS);
     res[1].assign(p1, p1 + NUM_SPACE_DIMS);
+
+    if (res[0][LON_INDEX] >= 0. && res[0][LON_INDEX] <= 360. &&
+        res[1][LON_INDEX] >= 0. && res[1][LON_INDEX] <= 360.) {
+        // no need to regularize if the edge is entirely inside the domain
+        return res;
+    }
 
     // fix the longitude to minimize the edge length
     double dLon = p1[LON_INDEX] - p0[LON_INDEX];
@@ -471,6 +488,7 @@ Ugrid2D::findCellsAlongLine(const Vector<double>& point0,
     Vector<double> du = point1 - point0;
     du /= (double) nSections;
 
+    std::cerr << "<<< findCellsAlongLine points " << point0 << " -> " << point1 << " nSections = " << nSections << '\n';
     for (size_t iSection = 0; iSection < nSections; ++iSection) {
 
         // start/nd points of the segment
@@ -491,10 +509,12 @@ Ugrid2D::findCellsAlongLine(const Vector<double>& point0,
         nHi = std::max(begN, endN);
 
         // iterate over the buckets
+        std::cerr << "<<< \nm = " << mLo << " ... " << mHi << " n = " << nLo << " ... " << nHi << '\n';
         for (int m = mLo; m <= mHi; ++m) {
             for (int n = nLo; n <= nHi; ++n) {
                 bucketId = m * numBucketsX + n;
                 for (const size_t& faceId : this->bucket2Faces.find(bucketId)->second) {
+                    std::cerr << "<<< adding face " << faceId << "\n";
                     res.insert(faceId);
                 }
             }

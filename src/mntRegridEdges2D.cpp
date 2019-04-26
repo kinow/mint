@@ -252,6 +252,8 @@ int mnt_regridedges2d_build(RegridEdges2D_t** self, int numCellsPerBucket) {
     // compute the weights
     for (size_t dstEdgeId = 0; dstEdgeId < (*self)->numDstEdges; ++dstEdgeId) {
 
+        std::cerr << "*** dstEdgeId = " << dstEdgeId << '\n';
+
         // get the start end points of the dst egde
         std::vector< Vector<double> > dstEdgePoints = (*self)->dstGrid.getEdgePointsRegularized(dstEdgeId);
         Vector<double> u = dstEdgePoints[1] - dstEdgePoints[0];
@@ -277,6 +279,8 @@ int mnt_regridedges2d_build(RegridEdges2D_t** self, int numCellsPerBucket) {
             inside = (*self)->srcGrid.getParamCoords(dstPoint0, &dstXi0[0]); // need to check
             inside = (*self)->srcGrid.getParamCoords(dstPoint1, &dstXi1[0]); // need to check
 
+            std::cerr << "*** \tsrcCellId = " << srcCellId << " lambda = " << lambda0 << " -> " << lambda1 << " xi = " << dstXi0 << " -> " << dstXi1 << '\n';
+
             // iterate over the edges of the src cell
             const size_t* srcEdgeIds = (*self)->srcGrid.getFaceEdgeIds(srcCellId);
             for (size_t i = 0; i < 4; ++i) { // 2d (4 edges)
@@ -291,6 +295,8 @@ int mnt_regridedges2d_build(RegridEdges2D_t** self, int numCellsPerBucket) {
                 // compute the src cell parametric coords of the src edge
                 inside = (*self)->srcGrid.getParamCoords(srcPoint0, &srcXi0[0]); // need to check
                 inside = (*self)->srcGrid.getParamCoords(srcPoint1, &srcXi1[0]); // need to check
+
+                std::cerr << "*** \t\tsrcEdgeId = " << srcEdgeId << " xi = " << srcXi0 << " -> " << srcXi1 << '\n';
 
                 // compute the interpolation weight
                 double weight = 1.0;
@@ -384,6 +390,7 @@ int mnt_regridedges2d_apply(RegridEdges2D_t** self,
         dst_data[i] = 0.0;
     }
 
+    std::cerr << "... size of weights = " << (*self)->weights.size() << '\n';
     // add the contributions from each src edge
     for (size_t i = 0; i < (*self)->weights.size(); ++i) {
 
@@ -391,8 +398,8 @@ int mnt_regridedges2d_apply(RegridEdges2D_t** self,
         size_t srcEdgeId = (size_t) (*self)->weightSrcEdgeIds[i];
         double weight = (*self)->weights[i];
 
-        dst_data[dstEdgeId] += (*self)->weights[i] * src_data[srcEdgeId];
-
+        dst_data[dstEdgeId] += weight * src_data[srcEdgeId];
+        std::cerr << "... dstEdgeId = " << dstEdgeId << " srcEdgeId = " << srcEdgeId << " weight = " << weight << '\n';
     }
 
     return 0;
