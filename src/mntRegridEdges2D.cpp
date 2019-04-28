@@ -184,6 +184,54 @@ int mnt_regridedges2d_dumpEdgeField(RegridEdges2D_t** self,
     return 0;
 }
 
+extern "C"
+int mnt_regridedges2d_checkSrcGrid(RegridEdges2D_t** self, double tol) {
+
+    std::vector<size_t> badFaceIds = (*self)->srcGrid.getNegativeFaces(tol);
+
+    for (const size_t& faceId : badFaceIds) {
+        const size_t* pointIds = (*self)->srcGrid.getFacePointIds(faceId);
+        const size_t* edgeIds = (*self)->srcGrid.getFaceEdgeIds(faceId);
+        std::cout << "Negative area detected for source grid face " << faceId << " with nodes ";
+        for (size_t i = 0; i < 4; ++i) { // 4 nodes per face
+            size_t pointId = pointIds[i];
+            std::cout << pointId << " ";
+        }
+        std::cout << '\n';
+        for (size_t i = 0; i < 4; ++i) { // 4 edges per face
+            size_t edgeId = edgeIds[i];
+            const size_t* pointIds = (*self)->srcGrid.getEdgePointIds(edgeId);
+            std::vector< Vector<double> > points = (*self)->srcGrid.getEdgePointsRegularized(edgeId);
+            std::cout << '\t' << pointIds[0] << '(' << points[0] << ")----" << edgeId << "---->" << pointIds[1] << '(' << points[1] << ")\n";
+        }
+    }
+
+    return 0;
+}
+
+extern "C"
+int mnt_regridedges2d_checkDstGrid(RegridEdges2D_t** self, double tol) {
+
+    std::vector<size_t> badFaceIds = (*self)->dstGrid.getNegativeFaces(tol);
+    
+    for (const size_t& faceId : badFaceIds) {
+        const size_t* pointIds = (*self)->dstGrid.getFacePointIds(faceId);
+        const size_t* edgeIds = (*self)->dstGrid.getFaceEdgeIds(faceId);
+        std::cout << "Negative area detected for destination grid face " << faceId << " with nodes ";
+        for (size_t i = 0; i < 4; ++i) { // 4 nodes per face
+            size_t pointId = pointIds[i];
+            std::cout << pointId << " ";
+        }
+        for (size_t i = 0; i < 4; ++i) { // 4 edges per face
+            size_t edgeId = edgeIds[i];
+            const size_t* pointIds = (*self)->dstGrid.getEdgePointIds(edgeId);
+            std::vector< Vector<double> > points = (*self)->dstGrid.getEdgePointsRegularized(edgeId);
+            std::cout << '\t' << pointIds[0] << '(' << points[0] << ")----" << edgeId << "---->" << pointIds[1] << '(' << points[1] << ")\n";
+        }
+    }
+
+    return 0;
+}
 
 extern "C"
 int mnt_regridedges2d_loadSrcGrid(RegridEdges2D_t** self, 

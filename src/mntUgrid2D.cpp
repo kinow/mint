@@ -336,10 +336,11 @@ Ugrid2D::getFacePointsRegularized(size_t faceId) const {
         allNodesInsideDomain &= node[LON_INDEX] <= 360.0;
     }
 
-    if (allNodesInsideDomain) {
-        // no need to regularize if the nodes are all inside the domain
-        return res;
-    }
+    return res; // no regularizarion
+    //if (allNodesInsideDomain) {
+    //    // no need to regularize if the nodes are all inside the domain
+    //    return res;
+    //}
 
     // regularize
     for (size_t i = 1; i < res.size(); ++i) {
@@ -393,11 +394,12 @@ Ugrid2D::getEdgePointsRegularized(size_t edgeId) const {
     res[0].assign(p0, p0 + NUM_SPACE_DIMS);
     res[1].assign(p1, p1 + NUM_SPACE_DIMS);
 
-    if (res[0][LON_INDEX] >= 0. && res[0][LON_INDEX] <= 360. &&
-        res[1][LON_INDEX] >= 0. && res[1][LON_INDEX] <= 360.) {
-        // no need to regularize if the edge is entirely inside the domain
-        return res;
-    }
+    return res; // no regularization
+    //if (res[0][LON_INDEX] >= 0. && res[0][LON_INDEX] <= 360. &&
+    //    res[1][LON_INDEX] >= 0. && res[1][LON_INDEX] <= 360.) {
+    //    // no need to regularize if the edge is entirely inside the domain
+    //    return res;
+    //}
 
     // fix the longitude to minimize the edge length
     double dLon = p1[LON_INDEX] - p0[LON_INDEX];
@@ -703,4 +705,29 @@ Ugrid2D::dumpGridVtk(const std::string& filename) {
     f.close();
 }
 
+std::vector<size_t> 
+Ugrid2D::getNegativeFaces(double tol) const {
+
+    std::vector<size_t> res;
+
+    for (size_t faceId = 0; faceId < this->numFaces; ++faceId) {
+
+        std::vector< Vector<double> > nodes = this->getFacePointsRegularized(faceId);
+
+        bool negativeArea = false;
+        for (size_t i0 = 0; i0 <= 2; i0 += 2) {
+            size_t i1 = (i0 + 1) % 4; // 4 points per face
+            size_t i2 = (i0 + 3) % 4; // 4 points per face
+            Vector<double> d10 = nodes[i1] - nodes[i0];
+            Vector<double> d20 = nodes[i2] - nodes[i0];
+            double cross = d10[0]*d20[1] - d10[1]*d20[0];
+            negativeArea |= (cross < tol);
+        }
+        if (negativeArea) {
+            res.push_back(faceId);
+        }
+    }
+
+    return res;
+}
 

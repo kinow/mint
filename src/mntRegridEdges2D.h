@@ -69,6 +69,20 @@ int mnt_regridedges2d_dumpEdgeField(RegridEdges2D_t** self,
                                   size_t ndata, const double data[]);
 
 /** 
+ * Check source grid
+ * @param tol tolerance below which an area is deemed negative
+ */
+extern "C"
+int mnt_regridedges2d_checkSrcGrid(RegridEdges2D_t** self, double tol);
+
+/** 
+ * Check destination grid
+ * @param tol tolerance below which an area is deemed negative
+ */
+extern "C"
+int mnt_regridedges2d_checkDstGrid(RegridEdges2D_t** self, double tol);
+
+/** 
  * Load source grid from 2D UGRID file
  * @param fort_filename file name (does not require termination character)
  * @param n length of filename string

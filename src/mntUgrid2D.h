@@ -223,6 +223,19 @@ findIntersectionsWithLine(const Vector<double>& pBeg, const Vector<double>& pEnd
  */
 void dumpGridVtk(const std::string& filename);
 
+/**
+ * Get the two triangle areas of a face
+ * @param faceId face Id
+ * @return area013, area231
+ */
+std::pair<double, double> getFaceAreas(size_t faceId);
+
+/**
+ * Get the faces that have a negative area
+ * @param tol sall area tolerance. Area is negative if < tol.
+ * @return list of faceIds
+ */
+std::vector<size_t> getNegativeFaces(double tol) const;
 
 private:
 

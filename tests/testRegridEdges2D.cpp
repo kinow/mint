@@ -21,6 +21,9 @@ void regridEdgeFieldTest(const std::string& testName, const std::string& srcFile
     ier = mnt_regridedges2d_loadSrcGrid(&rg, srcFile.c_str(), (int) srcFile.size());
     assert(ier == 0);
 
+    ier = mnt_regridedges2d_checkSrcGrid(&rg, -1.e-10);
+    assert(ier == 0);    
+
     ier = mnt_regridedges2d_loadDstGrid(&rg, dstFile.c_str(), (int) dstFile.size());
     assert(ier == 0);
 
