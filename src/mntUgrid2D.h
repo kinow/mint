@@ -68,6 +68,7 @@ size_t getNumberOfPoints() const {
  * @param face Id
  * @return pointer
  */
+inline
 const size_t* getFacePointIds(size_t faceId) const {
     return &this->face2Points[faceId*4];
 }
@@ -80,6 +81,7 @@ const std::vector<size_t>& getFacePointIds() const {
  * @param face Id 
  * @return pointer
  */
+inline
 const size_t* getFaceEdgeIds(size_t faceId) const {
     return &this->face2Edges[faceId*4];
 }
@@ -111,12 +113,54 @@ const std::vector<double>& getPoints() const {
     return this->points;
 }
 
-/**
- * Get the regularized points of the edge
+/** 
+ * Get the regularized start/end points of edge in face
  * @param edgeId edge Id
- * @return the two points with 360 added/substracted to minimize the edge length
+ * @param faceId face Id
+ * @param pA start point (output)
+ * @param pB end point (output)
  */
-std::vector< Vector<double> > getEdgePointsRegularized(size_t edgeId) const;
+int
+getEdgeBegEndPointsRegularized(size_t edgeId, size_t faceId, 
+                               Vector<double>& pA, Vector<double>& pB) {
+
+    // point Ids of this edge
+    const size_t* edgePointIds = this->getEdgePointIds(edgeId);
+
+    // point Ids of this face
+    const size_t* facePointIds = this->getFacePointIds(faceId);
+
+
+    std::vector< Vector<double> > points = this->getFacePointsRegularized(faceId);
+
+    size_t ipA = edgePointIds[0];
+    const size_t* itA = std::find(&facePointIds[0], &facePointIds[4], ipA);
+
+    size_t ipB = edgePointIds[1];
+    const size_t* itB = std::find(&facePointIds[0], &facePointIds[4], ipB);
+
+    if (itA == &facePointIds[4]) {
+        // ipA is not in the list of face points
+        std::cerr << "ERROR point Id " << ipA << " belonging to edge " << edgeId 
+                  << " is not in the list of point Ids of face " << faceId << '\n';
+        return 1;
+    }
+
+    size_t jA = std::distance(&facePointIds[0], itA);
+    pA = points[jA];
+
+    if (itB == &facePointIds[4]) {
+        // ipB is not in the list of face points
+        std::cerr << "ERROR point Id " << ipB << " belonging to edge " << edgeId 
+                  << " is not in the list of point Ids of face " << faceId << '\n';
+        return 2;
+    }
+
+    size_t jB = std::distance(&facePointIds[0], itB);
+    pB = points[jB];
+
+    return 0;
+}
 
 /**
  * Get the regularized points of the face
@@ -236,6 +280,8 @@ std::pair<double, double> getFaceAreas(size_t faceId);
  * @return list of faceIds
  */
 std::vector<size_t> getNegativeFaces(double tol) const;
+
+
 
 private:
 

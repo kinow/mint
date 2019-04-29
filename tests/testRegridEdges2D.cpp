@@ -37,8 +37,10 @@ void regridEdgeFieldTest(const std::string& testName, const std::string& srcFile
     assert(ier == 0);
 
     // set the source field
-    size_t numSrcEdges;
+    size_t numSrcEdges, numSrcFaces;
     ier = mnt_regridedges2d_getNumSrcEdges(&rg, &numSrcEdges);
+    assert(ier == 0);
+    ier = mnt_regridedges2d_getNumSrcFaces(&rg, &numSrcFaces);
     assert(ier == 0);
 
     Vector<double> p0(3), p1(3);
@@ -49,8 +51,10 @@ void regridEdgeFieldTest(const std::string& testName, const std::string& srcFile
         srcData[srcEdgeId] = streamFunc(p1) - streamFunc(p0);
     }
 
-    size_t numDstEdges;
+    size_t numDstEdges, numDstFaces;
     ier = mnt_regridedges2d_getNumDstEdges(&rg, &numDstEdges);
+    assert(ier == 0);
+    ier = mnt_regridedges2d_getNumDstFaces(&rg, &numDstFaces);
     assert(ier == 0);
 
     std::vector<double> dstData(numDstEdges);

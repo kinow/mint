@@ -336,11 +336,10 @@ Ugrid2D::getFacePointsRegularized(size_t faceId) const {
         allNodesInsideDomain &= node[LON_INDEX] <= 360.0;
     }
 
-    return res; // no regularizarion
-    //if (allNodesInsideDomain) {
-    //    // no need to regularize if the nodes are all inside the domain
-    //    return res;
-    //}
+    if (allNodesInsideDomain) {
+        // no need to regularize if the nodes are all inside the domain
+        return res;
+    }
 
     // regularize
     for (size_t i = 1; i < res.size(); ++i) {
@@ -353,8 +352,9 @@ Ugrid2D::getFacePointsRegularized(size_t faceId) const {
         double* minDLon = std::min_element(&dLonsPM360[0], &dLonsPM360[3]);
         int indexMin = (int) std::distance(dLonsPM360, minDLon);
         res[i][LON_INDEX] += (indexMin - 1)*360.0;
-   }
+    }
 
+    // if at the poles, set the longitude to the average of the three other nodes
     int indexPole = -1;
     double avgLon = 0.;
     for (size_t i = 0; i < res.size(); ++i) {
@@ -369,53 +369,15 @@ Ugrid2D::getFacePointsRegularized(size_t faceId) const {
     avgLon /= 3.;
 
     if (indexPole >= 0) {
-        // longitude at the pole is ill defined - we can set it to any
-        // value.
+        // one of the nodes is at the pole...
+
+        // longitude at the pole is ill defined - we can set it to any value
         if (avgLon > 180.0) {
             res[indexPole][LON_INDEX] = 270.0;
         }
         else {
             res[indexPole][LON_INDEX] = 90.0;
         }
-    }
-
-    return res;
-}
-
-
-std::vector< Vector<double> > 
-Ugrid2D::getEdgePointsRegularized(size_t edgeId) const {
-
-    const size_t* ptIds = this->getEdgePointIds(edgeId);
-    const double* p0 = this->getPoint(ptIds[0]);
-    const double* p1 = this->getPoint(ptIds[1]);
-
-    std::vector< Vector<double> > res(2);
-    res[0].assign(p0, p0 + NUM_SPACE_DIMS);
-    res[1].assign(p1, p1 + NUM_SPACE_DIMS);
-
-    return res; // no regularization
-    //if (res[0][LON_INDEX] >= 0. && res[0][LON_INDEX] <= 360. &&
-    //    res[1][LON_INDEX] >= 0. && res[1][LON_INDEX] <= 360.) {
-    //    // no need to regularize if the edge is entirely inside the domain
-    //    return res;
-    //}
-
-    // fix the longitude to minimize the edge length
-    double dLon = p1[LON_INDEX] - p0[LON_INDEX];
-    double dLonsPM360[] = {std::abs(dLon - 360.), std::abs(dLon), std::abs(dLon + 360.)};
-    double* minDLon = std::min_element(&dLonsPM360[0], &dLonsPM360[3]);
-    int indexMin = (int) std::distance(dLonsPM360, minDLon);
-    res[1][LON_INDEX] += (indexMin - 1)*360.0;
-
-    // fix the latitude to minimize the edge length
-    if (std::abs(std::abs(res[0][LAT_INDEX]) - 90.) < 1.e-12) {
-        // lon is not well defined at the pole, choose to be the same as the other lon
-        res[0][LON_INDEX] = res[1][LON_INDEX];
-    }
-    if (std::abs(res[1][LAT_INDEX]) == 90.) {
-        // lon is not well defined at the pole, choose to be the same as the other lon
-        res[1][LON_INDEX] = res[0][LON_INDEX];
     }
 
     return res;

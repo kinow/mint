@@ -20,7 +20,11 @@ struct RegridEdges2D_t {
     std::map< std::pair<size_t, size_t>, double > weights;
 
     size_t numSrcEdges;
+    size_t numSrcFaces;
+
     size_t numDstEdges;
+    size_t numDstFaces;
+
 };
 
 /**
@@ -132,7 +136,8 @@ int mnt_regridedges2d_getNumDstEdges(RegridEdges2D_t** self, size_t* n);
  * @return error code (0 is OK)
  */
 extern "C"
-int mnt_regridedges2d_getSrcEdgePointsRegularized(RegridEdges2D_t** self, size_t srcEdgeId,
+int mnt_regridedges2d_getSrcEdgePointsRegularized(RegridEdges2D_t** self,
+                                                  size_t srcEdgeId, size_t srcFaceId,
                                                   double p0[], double p1[]);
 
 /**
@@ -143,7 +148,8 @@ int mnt_regridedges2d_getSrcEdgePointsRegularized(RegridEdges2D_t** self, size_t
  * @return error code (0 is OK)
  */
 extern "C"
-int mnt_regridedges2d_getDstEdgePointsRegularized(RegridEdges2D_t** self, size_t dstEdgeId,
+int mnt_regridedges2d_getDstEdgePointsRegularized(RegridEdges2D_t** self,
+                                                  size_t dstEdgeId, size_t srcFaceId,
                                                   double p0[], double p1[]);
 
 /**

@@ -5,6 +5,49 @@
 #include <netcdf.h>
 
 /**
+ * Compute the inrterpolation weight between a source cell edge and a destination line segment
+ * @param srcXi0 start point of src edge
+ * @param srcXi1 end point of the src edge
+ * @param dstXi0 start point of target line
+ * @param dstXi1 end point of target line
+ * @return interpolation weight
+ */
+double computeWeight(const Vector<double>& srcXi0, const Vector<double>& srcXi1,
+                     const Vector<double>& dstXi0, const Vector<double>& dstXi1) {
+
+    double weight = 1.0;
+    for (size_t d = 0; d < 2; ++d) {
+
+        // mid point of target
+        double dstXiMid = 0.5*(dstXi0[d] + dstXi1[d]);
+        // length of target
+        double dstXiLen = dstXi1[d] - dstXi0[d];
+
+        // mid point of src edge in parameter space
+        double x = 0.5*(srcXi0[d] + srcXi1[d]);
+
+        // use Lagrange interpolation to evaluate the basis function integral for
+        // any for the 3 possible x values in {0, 0.5, 1}. This formula will make 
+        // it easier to extend the code to 3d
+        double xm00 = x;
+        double xm05 = x - 0.5;
+        double xm10 = x - 1.0;
+        double lag00 = + 2. * xm05 * xm10;
+        double lag05 = - 4. * xm00 * xm10;
+        double lag10 = + 2. * xm00 * xm05;
+
+        weight *= (1.0 - dstXiMid)*lag00 + dstXiLen*lag05 + dstXiMid*lag10;
+
+        // fix sign when src edge's direction is negative in src cell param coords
+        // expecting srcXi1[d] - srcXi0[d] to be -1, 0 or 1
+        weight *= (srcXi1[d] - srcXi0[d] < -0.001? -1.0: 1.0);
+    }
+
+    return weight;
+}
+
+
+/**
  * Extract the file name and mesh name from non-zero terminated fortran string 
  * @param fort_filename eg "fileName:meshName"
  * @param n length o filename
@@ -28,8 +71,12 @@ extern "C"
 int mnt_regridedges2d_new(RegridEdges2D_t** self) {
 
     *self = new RegridEdges2D_t();
+
     (*self)->numSrcEdges = 0;
+    (*self)->numSrcFaces = 0;
+
     (*self)->numDstEdges = 0;
+    (*self)->numDstFaces = 0;
 
     return 0;
 }
@@ -189,6 +236,8 @@ int mnt_regridedges2d_checkSrcGrid(RegridEdges2D_t** self, double tol) {
 
     std::vector<size_t> badFaceIds = (*self)->srcGrid.getNegativeFaces(tol);
 
+    Vector<double> pA(3, 0.0);
+    Vector<double> pB(3, 0.0);
     for (const size_t& faceId : badFaceIds) {
         const size_t* pointIds = (*self)->srcGrid.getFacePointIds(faceId);
         const size_t* edgeIds = (*self)->srcGrid.getFaceEdgeIds(faceId);
@@ -201,8 +250,8 @@ int mnt_regridedges2d_checkSrcGrid(RegridEdges2D_t** self, double tol) {
         for (size_t i = 0; i < 4; ++i) { // 4 edges per face
             size_t edgeId = edgeIds[i];
             const size_t* pointIds = (*self)->srcGrid.getEdgePointIds(edgeId);
-            std::vector< Vector<double> > points = (*self)->srcGrid.getEdgePointsRegularized(edgeId);
-            std::cout << '\t' << pointIds[0] << '(' << points[0] << ")----" << edgeId << "---->" << pointIds[1] << '(' << points[1] << ")\n";
+            (*self)->srcGrid.getEdgeBegEndPointsRegularized(edgeId, faceId, pA, pB);
+            std::cout << '\t' << pointIds[0] << '(' << pA << ")----" << edgeId << "---->" << pointIds[1] << '(' << pB << ")\n";
         }
     }
 
@@ -214,6 +263,8 @@ int mnt_regridedges2d_checkDstGrid(RegridEdges2D_t** self, double tol) {
 
     std::vector<size_t> badFaceIds = (*self)->dstGrid.getNegativeFaces(tol);
     
+    Vector<double> pA(3, 0.0);
+    Vector<double> pB(3, 0.0);
     for (const size_t& faceId : badFaceIds) {
         const size_t* pointIds = (*self)->dstGrid.getFacePointIds(faceId);
         const size_t* edgeIds = (*self)->dstGrid.getFaceEdgeIds(faceId);
@@ -225,8 +276,8 @@ int mnt_regridedges2d_checkDstGrid(RegridEdges2D_t** self, double tol) {
         for (size_t i = 0; i < 4; ++i) { // 4 edges per face
             size_t edgeId = edgeIds[i];
             const size_t* pointIds = (*self)->dstGrid.getEdgePointIds(edgeId);
-            std::vector< Vector<double> > points = (*self)->dstGrid.getEdgePointsRegularized(edgeId);
-            std::cout << '\t' << pointIds[0] << '(' << points[0] << ")----" << edgeId << "---->" << pointIds[1] << '(' << points[1] << ")\n";
+            (*self)->srcGrid.getEdgeBegEndPointsRegularized(edgeId, faceId, pA, pB);
+            std::cout << '\t' << pointIds[0] << '(' << pA << ")----" << edgeId << "---->" << pointIds[1] << '(' << pB << ")\n";
         }
     }
 
@@ -248,6 +299,7 @@ int mnt_regridedges2d_loadSrcGrid(RegridEdges2D_t** self,
     ier = (*self)->srcGrid.load(fileName, meshName);
 
     (*self)->numSrcEdges = (*self)->srcGrid.getNumberOfEdges();
+    (*self)->numSrcFaces = (*self)->srcGrid.getNumberOfFaces();
 
     return ier;
 }
@@ -267,6 +319,7 @@ int mnt_regridedges2d_loadDstGrid(RegridEdges2D_t** self,
     ier = (*self)->dstGrid.load(fileName, meshName);
 
     (*self)->numDstEdges = (*self)->dstGrid.getNumberOfEdges();
+    (*self)->numDstFaces = (*self)->dstGrid.getNumberOfFaces();
 
     return ier;
 }
@@ -295,90 +348,80 @@ int mnt_regridedges2d_build(RegridEdges2D_t** self, int numCellsPerBucket) {
     (*self)->srcGrid.buildLocator(numCellsPerBucket);
 
     // compute the weights
-    for (size_t dstEdgeId = 0; dstEdgeId < (*self)->numDstEdges; ++dstEdgeId) {
 
-        std::cerr << "*** dstEdgeId = " << dstEdgeId << '\n';
+    Vector<double> pA(3, 0.0);
+    Vector<double> pB(3, 0.0);
+    for (size_t dstCellId = 0; dstCellId < (*self)->numDstFaces; ++dstCellId) {
 
-        // get the start end points of the dst egde
-        std::vector< Vector<double> > dstEdgePoints = (*self)->dstGrid.getEdgePointsRegularized(dstEdgeId);
-        Vector<double> u = dstEdgePoints[1] - dstEdgePoints[0];
+        // get the edge Ids for this face
+        const size_t* dstEdgeIds = (*self)->dstGrid.getFaceEdgeIds(dstCellId);
 
-        // find all the intersections between the dst edge and the source grid
-        std::vector< std::pair<size_t, std::vector<double> > > intersections = 
-                (*self)->srcGrid.findIntersectionsWithLine(dstEdgePoints[0], dstEdgePoints[1]);
+        // iterate over the four edges
+        for (size_t i = 0; i < 4; ++i) { // four edges per face
 
-        for (const std::pair<size_t, std::vector<double> >& srcCellIdLambdas : intersections) {
+            size_t dstEdgeId = dstEdgeIds[i];
 
-            size_t srcCellId = srcCellIdLambdas.first;
+            (*self)->dstGrid.getEdgeBegEndPointsRegularized(dstEdgeId, dstCellId, pA, pB);
+            const Vector<double> u = pB - pA;
 
-            // compute and set the regularized nodes of the cell
-            (*self)->srcGrid.setCellPoints(srcCellId);
+            // find all the intersections between the dst edge and the source grid
+            std::vector< std::pair<size_t, std::vector<double> > > intersections = 
+                (*self)->srcGrid.findIntersectionsWithLine(pA, pB);
+            
+            for (const std::pair<size_t, std::vector<double> >& srcCellIdLambdas : intersections) {
 
-            double lambda0 = srcCellIdLambdas.second[0];
-            double lambda1 = srcCellIdLambdas.second[1];
-            Vector<double> dstPoint0 = dstEdgePoints[0] + lambda0*u;
-            Vector<double> dstPoint1 = dstEdgePoints[0] + lambda1*u;
+                size_t srcCellId = srcCellIdLambdas.first;
 
-            // compute the src cell parametric coords of the dst edge segment
-            bool inside;
-            inside = (*self)->srcGrid.getParamCoords(dstPoint0, &dstXi0[0]); // need to check
-            inside = (*self)->srcGrid.getParamCoords(dstPoint1, &dstXi1[0]); // need to check
+                // compute and set the regularized nodes of the cell
+                (*self)->srcGrid.setCellPoints(srcCellId);
+                double lambda0 = srcCellIdLambdas.second[0];
+                double lambda1 = srcCellIdLambdas.second[1];
 
-            std::cerr << "*** \tsrcCellId = " << srcCellId << " lambda = " << lambda0 << " -> " << lambda1 << " xi = " << dstXi0 << " -> " << dstXi1 << '\n';
+                // start/end points inside src grid cell
+                Vector<double> dstPoint0 = pA + lambda0*u;
+                Vector<double> dstPoint1 = pB + lambda1*u;
 
-            // iterate over the edges of the src cell
-            const size_t* srcEdgeIds = (*self)->srcGrid.getFaceEdgeIds(srcCellId);
-            for (size_t i = 0; i < 4; ++i) { // 2d (4 edges)
+                // compute the src cell parametric coords of the dst edge segment
+                bool inside;
+                inside = (*self)->srcGrid.getParamCoords(dstPoint0, &dstXi0[0]);
+                inside = (*self)->srcGrid.getParamCoords(dstPoint1, &dstXi1[0]);
 
-                size_t srcEdgeId = srcEdgeIds[i];
+                // iterate over the edges of the src cell
+                const size_t* srcEdgeIds = (*self)->srcGrid.getFaceEdgeIds(srcCellId);
 
-                // get the the end points of this src cell edge
-                std::vector< Vector<double> > srcPoints = (*self)->srcGrid.getEdgePointsRegularized(srcEdgeId);
-                const Vector<double>& srcPoint0 = srcPoints[0];
-                const Vector<double>& srcPoint1 = srcPoints[1];
+                for (size_t i = 0; i < 4; ++i) { // 2d (4 edges)
 
-                // compute the src cell parametric coords of the src edge
-                inside = (*self)->srcGrid.getParamCoords(srcPoint0, &srcXi0[0]); // need to check
-                inside = (*self)->srcGrid.getParamCoords(srcPoint1, &srcXi1[0]); // need to check
+                    size_t srcEdgeId = srcEdgeIds[i];
 
-                std::cerr << "*** \t\tsrcEdgeId = " << srcEdgeId << " xi = " << srcXi0 << " -> " << srcXi1 << '\n';
+                    // find the the start/end points of srcEdgeId on the srcCellId side
+                    Vector<double> srcPoint0(3, 0.0);
+                    Vector<double> srcPoint1(3, 0.0);
+                    int ier = (*self)->srcGrid.getEdgeBegEndPointsRegularized(srcEdgeId, srcCellId,
+                                                                              srcPoint0, srcPoint1);
 
-                // compute the interpolation weight
-                double weight = 1.0;
-                for (size_t d = 0; d < 2; ++d) {
+                    // compute the src cell parametric coords of the src edge
+                    inside = (*self)->srcGrid.getParamCoords(srcPoint0, &srcXi0[0]); // need to check
+                    inside = (*self)->srcGrid.getParamCoords(srcPoint1, &srcXi1[0]); // need to check
 
-                    // mid point of target
-                    double dstXiMid = 0.5*(dstXi0[d] + dstXi1[d]);
-                    // length of target
-                    double dstXiLen = dstXi1[d] - dstXi0[d];
+                    // compute the interpolation weight
+                    double weight = computeWeight(srcXi0, srcXi1, dstXi0, dstXi1);
 
-                    // mid point of src edge in parameter space
-                    double x = 0.5*(srcXi0[d] + srcXi1[d]);
+                    std::pair<size_t, size_t> ds((long long) dstEdgeId, (long long) srcEdgeId);
+                    std::map< std::pair<size_t, size_t>, double >::iterator it = (*self)->weights.find(ds);
 
-                    // use Lagrange interpolation to evaluate the basis function integral for
-                    // any for the 3 possible x values in {0, 0.5, 1}. This formula will make 
-                    // it easier to extend the code to 3d
-                    double xm00 = x;
-                    double xm05 = x - 0.5;
-                    double xm10 = x - 1.0;
-                    double lag00 = + 2. * xm05 * xm10;
-                    double lag05 = - 4. * xm00 * xm10;
-                    double lag10 = + 2. * xm00 * xm05;
-
-                    weight *= (1.0 - dstXiMid)*lag00 + dstXiLen*lag05 + dstXiMid*lag10;
-
-                    // fix sign when src edge's direction is negative in src cell param coords
-                    // expecting srcXi1[d] - srcXi0[d] to be -1, 0 or 1
-                    weight *= (srcXi1[d] - srcXi0[d] < -0.001? -1.0: 1.0);
-                }
-
-                std::pair<size_t, size_t> ds((long long) dstEdgeId, (long long) srcEdgeId);
-                (*self)->weights.insert( std::pair< std::pair<size_t, size_t>, double >(ds, weight) );
-
-            }
-        }
-    }
-
+                    if (it == (*self)->weights.end()) {
+                        // new entry
+                        (*self)->weights.insert( std::pair< std::pair<size_t, size_t>, double >(ds, weight) );
+                    }
+                    else {
+                        // update
+                        it->second /= 2.0;
+                        it->second += 0.5*weight;
+                    } 
+                } // end of src edge iteration
+            } // end of segment iteration
+        } // end of dst edge iteration
+    } // end of dst cell iteration
     return 0;
 }
 
@@ -395,25 +438,31 @@ int mnt_regridedges2d_getNumDstEdges(RegridEdges2D_t** self, size_t* nPtr) {
 }
 
 extern "C"
-int mnt_regridedges2d_getSrcEdgePointsRegularized(RegridEdges2D_t** self, size_t srcEdgeId,
+int mnt_regridedges2d_getSrcEdgePointsRegularized(RegridEdges2D_t** self, 
+                                                  size_t srcEdgeId, size_t srcFaceId,
                                                   double p0[], double p1[]) {
 
-    std::vector< Vector<double> > points = (*self)->srcGrid.getEdgePointsRegularized(srcEdgeId);
+    Vector<double> pA(3, 0.0);
+    Vector<double> pB(3, 0.0);
+    (*self)->srcGrid.getEdgeBegEndPointsRegularized(srcEdgeId, srcFaceId, pA, pB);
     for (size_t i = 0; i < 3; ++i) {
-        p0[i] = points[0][i];
-        p1[i] = points[1][i];
+        p0[i] = pA[i];
+        p1[i] = pB[i];
     }
     return 0;
 }
 
 extern "C"
-int mnt_regridedges2d_getDstEdgePointsRegularized(RegridEdges2D_t** self, size_t dstEdgeId,
+int mnt_regridedges2d_getDstEdgePointsRegularized(RegridEdges2D_t** self,
+                                                  size_t dstEdgeId, size_t dstFaceId,
                                                   double p0[], double p1[]) {
 
-    std::vector< Vector<double> > points = (*self)->dstGrid.getEdgePointsRegularized(dstEdgeId);
+    Vector<double> pA(3, 0.0);
+    Vector<double> pB(3, 0.0);
+    (*self)->dstGrid.getEdgeBegEndPointsRegularized(dstEdgeId, dstFaceId, pA, pB);
     for (size_t i = 0; i < 3; ++i) {
-        p0[i] = points[0][i];
-        p1[i] = points[1][i];
+        p0[i] = pA[i];
+        p1[i] = pB[i];
     }
     return 0;
 }
