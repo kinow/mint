@@ -16,12 +16,11 @@ public:
      * Constructor
      * @param grid instance of vtkUnstructuredGrid
      * @param locator vtkCellLocator instance attached to the above grid
-     * @param p0 start point
-     * @param p1 end point
+     * @param points points
      * @param periodicityLength length of the x periodic domain size (0 = non-periodic)
      */
     PolysegmentIter(vtkUnstructuredGrid* grid, vmtCellLocator* locator, 
-                    const double p0[], const double p1[], 
+                    const std::vector<Vec3>& points,
                     double periodicityLength=0.0);
 
     /**
@@ -97,7 +96,7 @@ private:
      * Add/remove periodicity length to fit in domain
      * @param v point (in/out)
      */
-    void  __makePeriodic(Vec3& vBeg, Vec3& vEnd);
+    void  __makePeriodic(Vec3& v);
 
 
     void __assignCoefficientsToSegments();
@@ -121,8 +120,7 @@ private:
      * @param p0 starting point of the line
      * @param p1 end point of the line 
      */
-    void __collectLineGridSegments(const double p0[],
-                                   const double p1[]);
+    void __collectLineGridSegments(const Vec3& p0, const Vec3& p1);
 
 
     // cell Ids for each intersection point

@@ -18,7 +18,7 @@ struct TCmpFunctor {
 
 PolysegmentIter::PolysegmentIter(vtkUnstructuredGrid* grid,
                                  vmtCellLocator* locator, 
-                                 const double p0In[], const double p1In[],
+                                 const std::vector<Vec3>& points,
                                  double periodicityLength) {
 
     // small tolerances 
@@ -32,37 +32,11 @@ PolysegmentIter::PolysegmentIter(vtkUnstructuredGrid* grid,
     this->grid = grid;
     this->locator = locator;
 
-    Vec3 p0(p0In);
-    Vec3 p1(p1In);
-    this->__makePeriodic(p0, p1);
-
     // cellIds, xis and ts are output
     this->cellIds.resize(0); // cell of each intersection point
     this->xis.resize(0);     // cell parametric coords for each intersection point
     this->ts.resize(0);      // linear param coord for each intersction point
-    this->__collectLineGridSegments(&p0[0], &p1[0]);
 
-    // gather the intersection points attached to a cell: cellId -> [indx0, indx1, ...] 
-    // indx is index in the cellIds, xis and ts arrays
-    std::map< vtkIdType, std::vector<size_t> > c2Inds;
-    for (size_t i = 0; i < this->cellIds.size(); ++i) {
-        vtkIdType cId = this->cellIds[i];
-        auto it = c2Inds.find(cId);
-        if (it != c2Inds.end()) {
-            // push_back into existing list value
-            it->second.push_back(i);
-        }
-        else {
-            // create new list value entry
-            std::vector<size_t> index(1, i);
-            std::pair< vtkIdType, std::vector<size_t> > p(cId, index);
-            c2Inds.insert(p);
-        }
-    }
-
-    //
-    // build the subsegments
-    //
 
     // arrays of cell Ids, start/end t values, start/end xi param coords, and 
     // duplicity coefficients for each subsegment
@@ -73,8 +47,48 @@ PolysegmentIter::PolysegmentIter(vtkUnstructuredGrid* grid,
     this->segXibs.resize(0);
     this->segCoeffs.resize(0);
 
+    size_t numPoints = points.size();
+    if (numPoints < 2) {
+        // need at least two points
+        std::cerr << "Warning: need at least two points in PolysegmentIter::PolysegmentIter\n";
+        return;
+    }
+    size_t numSegs = n - 1;
+
+    for (size_t iSeg = 0; iSeg < numSegs; ++iSeg) {
+
+        Vec3 p0 = points[iSeg];
+        this->__makePeriodic(p0);
+        Vec3 p1 = points[iSeg + 1];
+        this->__makePeriodic(p1);
+
+        this->__collectLineGridSegments(p0, p1);
+
+        // gather the intersection points attached to a cell: cellId -> [indx0, indx1, ...] 
+        // where indx is the index into the cellIds, xis and ts arrays
+        std::map< vtkIdType, std::vector<size_t> > c2Inds;
+        for (size_t i = 0; i < this->cellIds.size(); ++i) {
+            vtkIdType cId = this->cellIds[i];
+            auto it = c2Inds.find(cId);
+            if (it != c2Inds.end()) {
+                // push_back into existing list value
+                it->second.push_back(i);
+            }
+            else {
+                // create new list value entry
+                std::vector<size_t> index(1, i);
+                std::pair< vtkIdType, std::vector<size_t> > p(cId, index);
+                c2Inds.insert(p);
+            }
+        }
+    }
+
+    //
+    // build the subsegments
+    //
+
     // iterate over all the cells for which we have intersection points
-    for (std::map< vtkIdType, std::vector<size_t> >::const_iterator it = c2Inds.begin();
+    for (auto it = c2Inds.begin();
         it != c2Inds.end(); ++it) {
 
         // cell Id
@@ -406,12 +420,9 @@ PolysegmentIter::__collectIntersectionPoints(const double pBeg[],
 
 
 void 
-PolysegmentIter::__collectLineGridSegments(const double p0[], const double p1[]) {
+PolysegmentIter::__collectLineGridSegments(const Vec3& p0, const Vec3& p1) {
 
-    // things we need to define
-    vtkIdList* ptIds = vtkIdList::New();
     vtkGenericCell* cell = vtkGenericCell::New();
-    vtkIdList* cellIds = vtkIdList::New();
 
     Vec3 xi;
     double closestPoint[] = {0., 0., 0.};
@@ -420,13 +431,9 @@ PolysegmentIter::__collectLineGridSegments(const double p0[], const double p1[])
     int subId;
     double dist;
     std::vector<double> point(3, 0.0);
-    
-    // VTK wants 3d positions
-    double pBeg[] = {p0[0], p0[1], 0.};
-    double pEnd[] = {p1[0], p1[1], 0.};
 
     // add starting point
-    vtkIdType cId = this->locator->FindCell(pBeg, this->eps, cell, &xi[0], weights);
+    vtkIdType cId = this->locator->FindCell(&p0[0], this->eps, cell, &xi[0], weights);
     if (cId >= 0) {
         // success
         this->cellIds.push_back(cId);
@@ -440,8 +447,8 @@ PolysegmentIter::__collectLineGridSegments(const double p0[], const double p1[])
 
     std::vector<vtkIdType> cIds;
     std::vector<double> lambRays;
-    std::vector<Vec2> points;
-    this->__collectIntersectionPoints(pBeg, pEnd, cIds, lambRays, points);
+    std::vector<Vec3> points;
+    this->__collectIntersectionPoints(p0, p1, cIds, lambRays, points);
 
     // find the cell Id of the neighbouring cells
     size_t nXPts = cIds.size();
@@ -449,10 +456,8 @@ PolysegmentIter::__collectLineGridSegments(const double p0[], const double p1[])
 
         vtkIdType cId = cIds[i];
         double lambRay = lambRays[i];
-	      // need to copy because points are 2-tuples and VTK always works with 3-tuples
-        point.assign(&points[i][0], &points[i][2]);
 
-        int found = this->grid->GetCell(cId)->EvaluatePosition((double*) &point[0], closestPoint, 
+        int found = this->grid->GetCell(cId)->EvaluatePosition((double*) &points[i][0], closestPoint, 
                                                                subId, &xi[0], dist, weights);
         if (found) {
             this->cellIds.push_back(cId);
@@ -466,7 +471,7 @@ PolysegmentIter::__collectLineGridSegments(const double p0[], const double p1[])
     }
  
     // add end point 
-    cId = this->locator->FindCell(pEnd, this->eps, cell, &xi[0], weights);
+    cId = this->locator->FindCell(&p1[0], this->eps, cell, &xi[0], weights);
     if (cId >= 0) {
         // success
         this->cellIds.push_back(cId);
@@ -475,40 +480,26 @@ PolysegmentIter::__collectLineGridSegments(const double p0[], const double p1[])
     }
 
     // clean up
-    ptIds->Delete();
     cell->Delete();
-    cellIds->Delete();
 
 }
 
 void  
-PolysegmentIter::__makePeriodic(Vec3& vBeg, Vec3& vEnd) {
+PolysegmentIter::__makePeriodic(Vec3& v) {
 
     // fix start/end points if they fall outside the domain and the domain is periodic
     if (this->xPeriodicity > 0.) {
         double xmin = this->grid->GetBounds()[0];
         double xmax = this->grid->GetBounds()[1];
-        if (vBeg[0] < xmin) {
+        if (v[0] < xmin) {
             std::cerr << "Warning: adding periodicity length " << this->xPeriodicity << 
-                         " to start point " << vBeg << "\n";
-            vBeg[0] += this->xPeriodicity;
+                         " to point " << v << "\n";
+            v[0] += this->xPeriodicity;
         }
-        else if (vBeg[0] > xmax) {
+        else if (v[0] > xmax) {
             std::cerr << "Warning: subtracting periodicity length " << this->xPeriodicity << 
-                         " from start point " << vBeg << "\n";
-            vBeg[0] -= this->xPeriodicity;
-        }
-
-        if (vEnd[0] < xmin) {
-            std::cerr << "Warning: adding periodicity length " << this->xPeriodicity << 
-                         " to end point " << vEnd << "\n";
-            vEnd[0] += this->xPeriodicity;
-                std::cerr << "Now end point is " << vEnd << '\n';
-        }
-        else if (vEnd[0] > xmax) {
-            std::cerr << "Warning: subtracting periodicity length " << this->xPeriodicity << 
-                         " from end point " << vEnd << "\n";
-            vEnd[0] -= this->xPeriodicity;
+                         " from point " << v << "\n";
+            v[0] -= this->xPeriodicity;
         }
     }
 }
