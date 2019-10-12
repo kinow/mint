@@ -32,11 +32,6 @@ PolysegmentIter::PolysegmentIter(vtkUnstructuredGrid* grid,
     this->grid = grid;
     this->locator = locator;
 
-    Vec3 p0(p0In);
-    this->__makePeriodic(p0);
-    Vec3 p1(p1In);
-    this->__makePeriodic(p1);
-
     // cellIds, xis and ts are output
     this->cellIds.resize(0); // cell of each intersection point
     this->xis.resize(0);     // cell parametric coords for each intersection point
@@ -51,7 +46,22 @@ PolysegmentIter::PolysegmentIter(vtkUnstructuredGrid* grid,
     this->segXibs.resize(0);
     this->segCoeffs.resize(0);
 
-    this->__collectLineGridSegments(&p0[0], &p1[0]);
+    std::vector<Vec3> points{p0In, p1In};
+    size_t numPoints = points.size();
+    if (numPoints < 2) {
+    	std::cerr << "Warning: need at least two points in PolysegmentIter::PolysegmentIter\n";
+    	return;
+    }
+
+    // find all the intersection points between the broken line and the grid
+    size_t numSegs = numPoints - 1;
+    for (size_t iSeg = 0; iSeg < numSegs; ++iSeg) {
+    	Vec3 p0 = points[iSeg];
+    	this->__makePeriodic(p0);
+    	Vec3 p1 = points[iSeg + 1];
+    	this->__makePeriodic(p1);
+    	this->__collectLineGridSegments(&p0[0], &p1[0]);
+    }
 
     // gather the intersection points attached to a cell: cellId -> [indx0, indx1, ...] 
     // indx is index in the cellIds, xis and ts arrays
