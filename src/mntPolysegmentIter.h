@@ -16,12 +16,11 @@ public:
      * Constructor
      * @param grid instance of vtkUnstructuredGrid
      * @param locator vtkCellLocator instance attached to the above grid
-     * @param p0 start point
-     * @param p1 end point
+     * @param points points
      * @param periodicityLength length of the x periodic domain size (0 = non-periodic)
      */
     PolysegmentIter(vtkUnstructuredGrid* grid, vmtCellLocator* locator, 
-                    const double p0[], const double p1[], 
+                    const std::vector<Vec3>& points, 
                     double periodicityLength=0.0);
 
     /**

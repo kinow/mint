@@ -42,6 +42,7 @@ void test1Cell() {
     const double p1Ptr[] = {0.4, 0.5, 0.};
     const Vec3 p0(p0Ptr);
     const Vec3 p1(p1Ptr);
+    std::vector<Vec3> pts{p0, p1};
 
     std::vector< std::pair<vtkIdType, std::vector<double> > > 
         intersects = loc->findIntersectionsWithLine(p0, p1);
@@ -56,7 +57,7 @@ void test1Cell() {
     std::cout << "total lambda = " << totLam << '\n';
     assert(std::abs(totLam - 1.0) < 1.e-10);
 
-    PolysegmentIter psi(grid, loc, &p0[0], &p1[0]);
+    PolysegmentIter psi(grid, loc, pts);
     size_t numSegs = psi.getNumberOfSegments();
     psi.reset();
     for (size_t i = 0; i < numSegs; ++i) {
@@ -111,7 +112,8 @@ void test1CellLineOutside() {
 
     const double p0[] = {-0.2, 0.3, 0.};
     const double p1[] = {-0.4, 0.5, 0.};
-    PolysegmentIter psi(grid, loc, p0, p1);
+    std::vector<Vec3> pts{Vec3(p0), Vec3(p1)};
+    PolysegmentIter psi(grid, loc, pts);
     size_t numSegs = psi.getNumberOfSegments();
     psi.reset();
     for (size_t i = 0; i < numSegs; ++i) {
@@ -176,7 +178,8 @@ void test2Cells() {
 
     const double p0[] = {0.2, 0.3, 0.};
     const double p1[] = {1.4, 0.5, 0.};
-    PolysegmentIter psi(grid, loc, p0, p1);
+    std::vector<Vec3> pts{Vec3(p0), Vec3(p1)};
+    PolysegmentIter psi(grid, loc, pts);
     size_t numSegs = psi.getNumberOfSegments();
     psi.reset();
     for (size_t i = 0; i < numSegs; ++i) {
@@ -240,7 +243,8 @@ void test2CellsEdge() {
 
     const double p0[] = {0.2, 0.0, 0.};
     const double p1[] = {1.4, 0.0, 0.};
-    PolysegmentIter psi(grid, loc, p0, p1);
+    std::vector<Vec3> pts{Vec3(p0), Vec3(p1)};
+    PolysegmentIter psi(grid, loc, pts);
     size_t numSegs = psi.getNumberOfSegments();
     psi.reset();
     for (size_t i = 0; i < numSegs; ++i) {
@@ -307,8 +311,9 @@ void testPointOutside() {
 
     const double p0[] = {-0.1, 0.0, 0.};
     const double p1[] = {0.1, 0.0, 0.};
+    std::vector<Vec3> pts{Vec3(p0), Vec3(p1)};
     double xPeriod = 2.0;
-    PolysegmentIter psi(grid, loc, p0, p1, xPeriod);
+    PolysegmentIter psi(grid, loc, pts, xPeriod);
     size_t numSegs = psi.getNumberOfSegments();
     psi.reset();
     for (size_t i = 0; i < numSegs; ++i) {

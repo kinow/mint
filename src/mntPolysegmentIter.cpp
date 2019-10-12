@@ -18,7 +18,7 @@ struct TCmpFunctor {
 
 PolysegmentIter::PolysegmentIter(vtkUnstructuredGrid* grid,
                                  vmtCellLocator* locator, 
-                                 const double p0In[], const double p1In[],
+                                 const std::vector<Vec3>& points,
                                  double periodicityLength) {
 
     // small tolerances 
@@ -46,7 +46,6 @@ PolysegmentIter::PolysegmentIter(vtkUnstructuredGrid* grid,
     this->segXibs.resize(0);
     this->segCoeffs.resize(0);
 
-    std::vector<Vec3> points{p0In, p1In};
     size_t numPoints = points.size();
     if (numPoints < 2) {
     	std::cerr << "Warning: need at least two points in PolysegmentIter::PolysegmentIter\n";

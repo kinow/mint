@@ -359,9 +359,10 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket) {
             }
 
             // break the edge into sub-edges
+            std::vector<Vec3> dstEdgePoints{dstEdgePt0, dstEdgePt1};
             PolysegmentIter polySegIter = PolysegmentIter((*self)->srcGrid, 
                                                           (*self)->srcLoc,
-                                                          dstEdgePt0, dstEdgePt1);
+                                                          dstEdgePoints, 360.0);
 
             // number of sub-segments
             size_t numSegs = polySegIter.getNumberOfSegments();

@@ -102,7 +102,9 @@ int main(int argc, char** argv) {
             size_t ip1 = ip0 + 1;
             double p1[] = {(*xs)[ip1], (*ys)[ip1], 0.};
 
-            PolysegmentIter polyseg(grid, loc, p0, p1);
+            // SHOULD MOVE THIS OUT OF THE LOOP!
+            std::vector<Vec3> pts{Vec3(p0), Vec3(p1)};
+            PolysegmentIter polyseg(grid, loc, pts);
 
             size_t numSubSegs = polyseg.getNumberOfSegments();
             polyseg.reset();
