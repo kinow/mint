@@ -82,7 +82,13 @@ int main(int argc, char** argv) {
         vtkCellData* cellData = grid->GetCellData();
         vtkAbstractArray* aa = cellData->GetAbstractArray(varname.c_str());
         if (!aa) {
-            std::cerr << "ERROR: must specify a a valid field to project (-v)\n";
+            std::cerr << "ERROR: must specify a valid field to project (-v)\n";
+            int numArrays = cellData->GetNumberOfArrays();
+            std::cerr << "number of arrays: " << numArrays << '\n';
+            for (int i = 0; i < numArrays; ++i) {
+            	aa = cellData->GetAbstractArray(i);
+            	std::cerr << "found " << aa->GetName() << '\n';
+            }
             return 3;
         }
         double* srcData = (double*) aa->GetVoidPointer(0);
