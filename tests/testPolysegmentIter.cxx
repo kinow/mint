@@ -323,7 +323,7 @@ void testPointOutside() {
         double ta = psi.getBegLineParamCoord();
         double tb = psi.getEndLineParamCoord();
         double coeff = psi.getCoefficient();
-        std::cout << "test2CellsEdge: seg " << i << " cell=" << cellId \
+        std::cout << "testPointOutside: seg " << i << " cell=" << cellId \
                                    << " ta=" << ta << " xia=" << xia[0] << ',' << xia[1] 
                                    << " tb=" << tb << " xib=" << xib[0] << ',' << xib[1] 
                                    << '\n';
@@ -331,7 +331,7 @@ void testPointOutside() {
     }
     double tTotal = psi.getIntegratedParamCoord();
     double error = tTotal - 1.0;
-    std::cout << "test2CellsEdge: total t = " << tTotal <<  " error = " << error << '\n';
+    std::cout << "testPointOutside: total t = " << tTotal <<  " error = " << error << '\n';
     assert(std::abs(error) < 1.e-10);
 
     ptIds->Delete();
@@ -386,7 +386,8 @@ void test3Points() {
     std::vector<Vec3> pts{Vec3(p0), Vec3(p1), Vec3(p2)};
     for (size_t iInterval = 0; iInterval < pts.size() - 1; ++iInterval) {
 
-        PolysegmentIter psi(grid, loc, p0, p1, xPeriod);
+        std::vector<Vec3> pointsLine{pts[iInterval], pts[iInterval + 1]};
+        PolysegmentIter psi(grid, loc, pointsLine, xPeriod);
 
         size_t numSegs = psi.getNumberOfSegments();
         psi.reset();
@@ -397,7 +398,7 @@ void test3Points() {
             double ta = psi.getBegLineParamCoord();
             double tb = psi.getEndLineParamCoord();
             double coeff = psi.getCoefficient();
-            std::cout << "test2CellsEdge: seg " << i << " cell=" << cellId \
+            std::cout << "test3Points: seg " << i << " cell=" << cellId \
                                    << " ta=" << ta << " xia=" << xia[0] << ',' << xia[1]
                                    << " tb=" << tb << " xib=" << xib[0] << ',' << xib[1]
                                    << '\n';
@@ -405,9 +406,32 @@ void test3Points() {
         }
         double tTotal = psi.getIntegratedParamCoord();
         double error = tTotal - 1.0;
-        std::cout << "test2CellsEdge: total t = " << tTotal <<  " error = " << error << '\n';
+        std::cout << "test3Points: total t = " << tTotal <<  " error = " << error << '\n';
         assert(std::abs(error) < 1.e-10);
     }
+
+    // pass all the points in one go
+    PolysegmentIter psi(grid, loc, pts, xPeriod);
+
+    size_t numSegs = psi.getNumberOfSegments();
+    psi.reset();
+    for (size_t i = 0; i < numSegs; ++i) {
+        vtkIdType cellId = psi.getCellId();
+        const Vec3& xia = psi.getBegCellParamCoord();
+        const Vec3& xib = psi.getEndCellParamCoord();
+        double ta = psi.getBegLineParamCoord();
+        double tb = psi.getEndLineParamCoord();
+        double coeff = psi.getCoefficient();
+        std::cout << "test3Points-2: seg " << i << " cell=" << cellId \
+                                   << " ta=" << ta << " xia=" << xia[0] << ',' << xia[1]
+                                   << " tb=" << tb << " xib=" << xib[0] << ',' << xib[1]
+                                   << '\n';
+        psi.next();
+    }
+    double tTotal = psi.getIntegratedParamCoord();
+    double error = tTotal - 1.0;
+    std::cout << "test3Points-2: total t = " << tTotal <<  " error = " << error << '\n';
+    assert(std::abs(error) < 1.e-10);
 
     ptIds->Delete();
     loc->Delete();
