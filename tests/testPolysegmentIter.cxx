@@ -384,6 +384,7 @@ void test3Points() {
     double xPeriod = 2.0;
 
     std::vector<Vec3> pts{Vec3(p0), Vec3(p1), Vec3(p2)};
+    printf("intrvl     seg        cell         ta         xia             tb        xib\n");
     for (size_t iInterval = 0; iInterval < pts.size() - 1; ++iInterval) {
 
         std::vector<Vec3> pointsLine{pts[iInterval], pts[iInterval + 1]};
@@ -398,15 +399,12 @@ void test3Points() {
             double ta = psi.getBegLineParamCoord();
             double tb = psi.getEndLineParamCoord();
             double coeff = psi.getCoefficient();
-            std::cout << "test3Points: seg " << i << " cell=" << cellId \
-                                   << " ta=" << ta << " xia=" << xia[0] << ',' << xia[1]
-                                   << " tb=" << tb << " xib=" << xib[0] << ',' << xib[1]
-                                   << '\n';
+            printf("%6lu   %5lu     %6lld  %10.5lf    %5.3lf,%5.3lf  %10.5lf  %5.3lf,%5.3lf\n",
+                   iInterval, i, cellId, ta, xia[0], xia[1], tb, xib[0], xib[1]);
             psi.next();
         }
         double tTotal = psi.getIntegratedParamCoord();
         double error = tTotal - 1.0;
-        std::cout << "test3Points: total t = " << tTotal <<  " error = " << error << '\n';
         assert(std::abs(error) < 1.e-10);
     }
 
@@ -415,6 +413,7 @@ void test3Points() {
 
     size_t numSegs = psi.getNumberOfSegments();
     psi.reset();
+    printf("  seg       cell          ta         xia             tb       xib\n");
     for (size_t i = 0; i < numSegs; ++i) {
         vtkIdType cellId = psi.getCellId();
         const Vec3& xia = psi.getBegCellParamCoord();
@@ -422,6 +421,8 @@ void test3Points() {
         double ta = psi.getBegLineParamCoord();
         double tb = psi.getEndLineParamCoord();
         double coeff = psi.getCoefficient();
+        printf("%5lu     %6lld  %10.5lf    %5.3lf,%5.3lf  %10.5lf  %5.3lf,%5.3lf\n",
+                i, cellId, ta, xia[0], xia[1], tb, xib[0], xib[1]);
         std::cout << "test3Points-2: seg " << i << " cell=" << cellId \
                                    << " ta=" << ta << " xia=" << xia[0] << ',' << xia[1]
                                    << " tb=" << tb << " xib=" << xib[0] << ',' << xib[1]
