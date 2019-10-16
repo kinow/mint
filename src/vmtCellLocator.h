@@ -134,6 +134,22 @@ public:
     findIntersectionsWithLine(const Vec3& pBeg, const Vec3& pEnd, double xPeriodicity=0.0);
 
     /**
+     * Find all intersection points between line and the grid boundary
+     * @param pBeg start point of the line
+     * @param pEnd end point of the line
+     * @return list of lambda (linear parametric coordinate) values for each intersection
+     */
+    std::vector<double>
+    findLineGridBoundaryIntersections(const Vec3& pBeg, const Vec3& pEnd);
+
+    /**
+     * Add/substract periodicity lenght if point falls outside domain
+     * @param v point (in/out)
+     * @param xPeriodicity periodicity length
+     */
+    void makePeriodic(Vec3& v, double xPeriodicity);
+
+    /**
      * Check if a point is indide a face
      * @param faceId face/cell Id
      * @param point point

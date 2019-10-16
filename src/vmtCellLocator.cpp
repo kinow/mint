@@ -159,33 +159,55 @@ vmtCellLocator::FindCellsAlongLine(const double p0[3], const double p1[3], doubl
 std::vector< std::pair<vtkIdType, Vec2> >
 vmtCellLocator::findIntersectionsWithLine(const Vec3& pBeg, const Vec3& pEnd, double xPeriodicity) {
 
+    // direction of the line, does not change after adding/subtracting periodicity
+    Vec3 dp = pEnd - pBeg;
+
+    // find all the intersections of the lime with the grid boundary
+    std::vector<double> boundLambdas = this->findLineGridBoundaryIntersections(pBeg, pEnd);
+
     double lambdaInOut[2];
 
     // store result
     std::vector< std::pair<vtkIdType, Vec2> > res;
 
-    // collect the cells intersected by the line
-    vtkIdList* cells = vtkIdList::New();
-    const double eps = 10 * std::numeric_limits<double>::epsilon();    
-    this->FindCellsAlongLine(&pBeg[0], &pEnd[0], eps, cells);
+    const double eps = 10 * std::numeric_limits<double>::epsilon();
+    const double eps100 = 100*eps;
 
-    // iterate over the intersected cells
-    for (vtkIdType i = 0; i < cells->GetNumberOfIds(); ++i) {
+    size_t numSegs = boundLambdas.size() - 1; // 2 or more values
+    for (size_t iSeg = 0; iSeg < numSegs; ++iSeg) {
 
-    	vtkIdType cellId = cells->GetId(i);
+        // slightly adjust the points to fall inside the segment
+        Vec3 p0 = pBeg + (boundLambdas[iSeg + 0] + eps100)*dp;
+        Vec3 p1 = pBeg + (boundLambdas[iSeg + 1] - eps100)*dp;
 
-        std::vector<double> lambdas = this->collectIntersectionPoints(cellId, &pBeg[0], &pEnd[0]);
-
-        if (lambdas.size() >= 2) {
-
-            lambdaInOut[0] = lambdas[0];
-            lambdaInOut[1] = lambdas[lambdas.size() - 1];
-
-            // found entry/exit points so add
-            res.push_back(  std::pair<vtkIdType, Vec2>( cellId, Vec2(lambdaInOut) )  );
+        if (xPeriodicity > 0.) {
+            // add/subtract a periodicity length if need be
+            this->makePeriodic(p0, xPeriodicity);
+            this->makePeriodic(p1, xPeriodicity);
         }
+
+        // collect the cells intersected by the line
+        vtkIdList* cells = vtkIdList::New();
+        this->FindCellsAlongLine(&p0[0], &p1[0], eps, cells);
+
+        // iterate over the intersected cells
+        for (vtkIdType i = 0; i < cells->GetNumberOfIds(); ++i) {
+
+            vtkIdType cellId = cells->GetId(i);
+
+            std::vector<double> lambdas = this->collectIntersectionPoints(cellId, &p0[0], &p1[0]);
+
+            if (lambdas.size() >= 2) {
+
+                lambdaInOut[0] = lambdas[0];
+                lambdaInOut[1] = lambdas[lambdas.size() - 1];
+
+                // found entry/exit points so add
+                res.push_back(  std::pair<vtkIdType, Vec2>( cellId, Vec2(lambdaInOut) )  );
+            }
+        }
+        cells->Delete();
     }
-    cells->Delete();
 
     // sort by starting lambda
     std::sort(res.begin(), res.end(), LambdaBegFunctor());
@@ -206,6 +228,102 @@ vmtCellLocator::findIntersectionsWithLine(const Vec3& pBeg, const Vec3& pEnd, do
 
     return res;
 }
+
+void
+vmtCellLocator::makePeriodic(Vec3& v, double xPeriodicity) {
+
+    // fix start/end points if they fall outside the domain and the domain is periodic
+    if (xPeriodicity > 0.) {
+        double xmin = this->grid->GetBounds()[0];
+        double xmax = this->grid->GetBounds()[1];
+        if (v[0] < xmin) {
+            std::cerr << "Warning: adding periodicity length " << xPeriodicity << 
+                         " to point " << v << "\n";
+            v[0] += xPeriodicity;
+        }
+        else if (v[0] > xmax) {
+            std::cerr << "Warning: subtracting periodicity length " << xPeriodicity << 
+                         " from point " << v << "\n";
+            v[0] -= xPeriodicity;
+        }
+    }
+}
+
+std::vector<double>
+vmtCellLocator::findLineGridBoundaryIntersections(const Vec3& pBeg, const Vec3& pEnd) {
+
+    const double eps = 10 * std::numeric_limits<double>::epsilon();
+    const double eps100 = 100*eps;
+
+    std::vector<double> lambdas{0.};
+
+    // get the grid boundary
+    double* box = this->grid->GetBounds();
+
+    // box vertices
+    double xmin = box[0];
+    double xmax = box[1];
+    double ymin = box[2];
+    double ymax = box[3];
+    double v0[] = {xmin, ymin, 0.};
+    double v1[] = {xmax, ymin, 0.};
+    double v2[] = {xmax, ymax, 0.};
+    double v3[] = {xmin, ymax, 0.};
+
+    std::vector<double*> nodes{v0, v1, v2, v3};
+    const size_t npts = nodes.size();
+
+    // computes the intersection point of two lines
+    LineLineIntersector intersector;
+
+    // iterate over the cell's edges
+    size_t i0, i1;
+    for (i0 = 0; i0 < npts; ++i0) {
+
+        i1 = (i0 + 1) % npts;
+
+        // compute the intersection point
+        double* p0 = &nodes[i0][0];
+        double* p1 = &nodes[i1][0];
+
+        intersector.setPoints(&pBeg[0], &pEnd[0], p0, p1);
+
+        if (! intersector.hasSolution(eps)) {
+            // no solution, skip
+            continue;
+        }
+
+        // we have a solution but it could be degenerate
+        if (std::abs(intersector.getDet()) > eps) {
+
+            // normal intersection, 1 solution
+            Vec2 sol = intersector.getSolution();
+            double lambRay = sol[0];
+            double lambEdg = sol[1];
+
+            // is it valid? Intersection must be within (p0, p1) and (q0, q1)
+            if (lambRay >= (0. - eps100) && lambRay <= (1. + eps100)  && 
+                lambEdg >= (0. - eps100) && lambEdg <= (1. + eps100)) {
+                // add to list
+                if (lambRay > lambdas[lambdas.size() - 1] + eps100) {
+                    lambdas.push_back(lambRay);
+                }
+            }
+        }
+        // no need to worry about the degenerate case
+    }
+
+    if (lambdas[lambdas.size() - 1] < 1.0 - eps100) {
+        // only add if not already in the array
+        lambdas.push_back(1.0);
+    }
+
+    // order the lambdas
+    std::sort(lambdas.begin(), lambdas.end());
+
+    return lambdas;
+}
+
 
 std::vector<double>
 vmtCellLocator::collectIntersectionPoints(vtkIdType cellId, 
@@ -235,7 +353,7 @@ vmtCellLocator::collectIntersectionPoints(vtkIdType cellId,
     size_t i0, i1;
     for (i0 = 0; i0 < npts; ++i0) {
 
-    	i1 = (i0 + 1) % npts;
+        i1 = (i0 + 1) % npts;
 
         // compute the intersection point
         double* p0 = &nodes[i0][0];

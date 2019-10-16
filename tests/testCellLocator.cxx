@@ -182,8 +182,9 @@ void testUniformLatLonGrid(int nx, int ny, int numCellsPerBucket) {
         vtkIdType cellId = cIdLam.first;
         double lamIn = cIdLam.second[0];
         double lamOut = cIdLam.second[cIdLam.second.size() - 1];
-        std::cout << "... cellId = " << cellId << " lambda = " << lamIn << " -> " << lamOut << '\n';
         totLambda += lamOut - lamIn;
+        std::cout << "... cellId = " << cellId << " lambda = " << 
+                     lamIn << " -> " << lamOut << " totLambda = " << totLambda << " totLambda - 1 = " << totLambda - 1 << '\n';
     }
     std::cout << "testUniformLatLonGrid(" << nx << ',' << ny << ',' <<
                  numCellsPerBucket << "): pBeg = " << pBeg << " pEnd = " << pEnd <<
