@@ -176,7 +176,7 @@ vmtCellLocator::findIntersectionsWithLine(const Vec3& pBeg, const Vec3& pEnd, do
     size_t numSegs = boundLambdas.size() - 1; // 2 or more values
     for (size_t iSeg = 0; iSeg < numSegs; ++iSeg) {
 
-        // slightly adjust the points to fall inside the segment
+        // make sure the points fall inside the segment
         Vec3 p0 = pBeg + (boundLambdas[iSeg + 0] + eps100)*dp;
         Vec3 p1 = pBeg + (boundLambdas[iSeg + 1] - eps100)*dp;
 
