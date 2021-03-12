@@ -49,11 +49,11 @@ with open("version.txt") as f:
     VERSION = f.read().strip()
 
 
-# generate pymint/__init__.py from pymint/__init__.py.in
+# generate pylib/__init__.py from pylib/__init__.py.in
 init_file = ""
-with open("pymint/__init__.py.in") as fi:
+with open("pylib/__init__.py.in") as fi:
     init_file = re.sub(r'@VERSION@', VERSION, fi.read())
-    with open("pymint/__init__.py", 'w') as fo:
+    with open("pylib/__init__.py", 'w') as fo:
         fo.write(init_file)
 
 vtklib = getCondaVtk()
@@ -94,6 +94,7 @@ theorem is statisfied to near machine precision.
         "Programming Language :: Python :: 3",
     ],
     packages=['mint'],
+    scripts=['pyscripts/mint',],
     ext_modules = [setuptools.Extension('libmint', # name of the shared library
                    sources=glob.glob('src/*.cpp'),
                    define_macros=[],
@@ -103,6 +104,6 @@ theorem is statisfied to near machine precision.
                    extra_compile_args=[cpp11_flag,],
                    ),],
     include_package_data=True,
-    package_dir={'mint': 'pymint'},
+    package_dir={'mint': 'pylib'},
     install_requires=['numpy', 'vtk>=8.1.0', 'netcdf4', 'tbb'],
 )
