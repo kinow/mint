@@ -74,7 +74,7 @@ def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_gr
         rg.dumpWeights(str(weights_file))
         
 
-def apply_weights(*, weights_file: Path = '', field_name = '',
+def apply_weights(*, weights_file: Path = '', field_name: str = '',
                      src_field_file: Path = '', dst_field_file: Path = ''):
     """Apply the regridding weights
 

@@ -94,7 +94,7 @@ theorem is statisfied to near machine precision.
         "Programming Language :: Python :: 3",
     ],
     packages=['mint'],
-    scripts=['pyscripts/mint',],
+    scripts=['pytools/mint',],
     ext_modules = [setuptools.Extension('libmint', # name of the shared library
                    sources=glob.glob('src/*.cpp'),
                    define_macros=[],
