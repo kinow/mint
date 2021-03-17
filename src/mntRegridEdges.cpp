@@ -18,6 +18,23 @@
 #include <vtkUnstructuredGridWriter.h>
 #include <vtkPoints.h>
 
+int readAttributeIfEmpty(int ncid, const char* attName, std::string& valueToFillIn) {
+
+    int ier = 0;
+    if (valueToFillIn.size() == 0) {
+        // only read in the attribute if not already set
+        size_t len = 0;
+        ier = nc_inq_attlen(ncid, NC_GLOBAL, attName, &len);
+        if (ier == NC_NOERR) {
+            // attribute is present
+            valueToFillIn.resize(len);
+            // read the attribute
+            ier = nc_get_att_text(ncid, NC_GLOBAL, attName, &valueToFillIn[0]);
+        }
+    }
+    return ier;
+}
+
 
 extern "C"
 int mnt_regridedges_new(RegridEdges_t** self) {
@@ -755,6 +772,7 @@ int mnt_regridedges_apply(RegridEdges_t** self,
 extern "C"
 int mnt_regridedges_loadWeights(RegridEdges_t** self, 
                                 const char* fort_filename, int n) {
+
     // Fortran strings don't come with null-termination character. Copy string 
     // into a new one and add '\0'
     std::string filename = std::string(fort_filename, n);
@@ -765,6 +783,11 @@ int mnt_regridedges_loadWeights(RegridEdges_t** self,
         std::cerr << nc_strerror (ier);
         return 1;
     }
+
+    ier = readAttributeIfEmpty(ncid, "src_grid_file", (*self)->srcGridFile);
+    ier = readAttributeIfEmpty(ncid, "src_grid_name", (*self)->srcGridName);
+    ier = readAttributeIfEmpty(ncid, "dst_grid_file", (*self)->dstGridFile);
+    ier = readAttributeIfEmpty(ncid, "dst_grid_name", (*self)->dstGridName);
 
     // get the sizes
     size_t numWeights;
