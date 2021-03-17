@@ -6,8 +6,8 @@ import numpy
 import mint
 
 def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_grid_flag: int = 0, 
-                              dst_grid_file: Path = '', dst_grid_name: str = '', dst_grid_flag: int = 0,
-                              weights_file: Path = '', periodx : float = 360.):
+                       dst_grid_file: Path = '', dst_grid_name: str = '', dst_grid_flag: int = 0,
+                       weights_file: Path = '', periodx : float = 360.):
     """Compute weights
 
     :param src_grid_file: name of the file holding the source grid
@@ -22,15 +22,24 @@ def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_gr
     # create a regridder
     rg = mint.RegridEdges()
 
-
     # 0, 0 does not apply any transformations to the grid (appropriate for lat-lon).
     # All other grid types should apply (1, 1)
     rg.setSrcGridFlags(0, 0)
     if src_grid_flag:
         rg.setSrcGridFlags(1, 1)
 
+    if str(src_grid_file.name) is '.':
+        raise RuntimeError('ERROR: must specify source grid file')
+    if src_grid_name is '':
+        raise RuntimeError('ERROR: must specify source grid name')
+    if not src_grid_file.exists():
+        raise RuntimeError(f'ERROR: source grid file {src_grid_file} does not exist')
+
     # load the src grid
-    rg.loadSrcGrid(src_grid_file + ':' + src_grid_name)
+    fn = str(src_grid_file) + ':' + src_grid_name
+    print(f'info: loading {fn}')
+    rg.loadSrcGrid(fn)
+    print('Done.')
 
     # 0, 0 does not apply any transformations to the grid (appropriate for lat-lon).
     # All other grid types should apply (1, 1)
@@ -38,8 +47,18 @@ def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_gr
     if dst_grid_flag:
         rg.setDstGridFlags(1, 1)
 
+    if str(dst_grid_file) is '.':
+        raise RuntimeError('ERROR: must specify destination grid file')
+    if dst_grid_name is '':
+        raise RuntimeError('ERROR: must specify destination grid name')
+    if not dst_grid_file.exists():
+        raise RuntimeError(f'ERROR: destination grid file {dst_grid_file} does not exist')
+
     # load the dst grid
-    rg.loadDstGrid(dst_grid_file + ':' + dst_grid_name)
+    fn = str(dst_grid_file) + ':' + dst_grid_name
+    print(f'info: loading {fn}')
+    rg.loadDstGrid(fn)
+    print('Done.')
 
     # compute the regridding weights. numCellsPerBucket is used to accelerate the cell
     # search. The smaller numCellPerBucket the faster the search. However, there are
@@ -48,9 +67,10 @@ def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_gr
     # (set periodX = 0 in a regional model away from the dateline)
     rg.build(numCellsPerBucket=128, periodX=periodx, debug=2)
 
-    if weights_file:
+    if str(weights_file) is not '.':
         # save the weights in a netCDF file
-        rg.dumpWeights(weights_file)
+        print(f'info: saving weights in file {weights_file}')
+        rg.dumpWeights(str(weights_file))
         
 
 
