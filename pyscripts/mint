@@ -8,7 +8,7 @@ import mint
 def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_grid_flag: int = 0, 
                        dst_grid_file: Path = '', dst_grid_name: str = '', dst_grid_flag: int = 0,
                        weights_file: Path = '', periodx : float = 360.):
-    """Compute weights
+    """Compute the regridding weights
 
     :param src_grid_file: name of the file holding the source grid
     :param src_grid_name: name of the source grid stored in the netCDF file
@@ -19,6 +19,7 @@ def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_gr
     :param weights_file: netCDF file that will hold the regridding weights
     :param periodx: periodicity in longitudes, can be 0 if non-periodic
     """
+
     # create a regridder
     rg = mint.RegridEdges()
 
@@ -73,6 +74,48 @@ def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_gr
         rg.dumpWeights(str(weights_file))
         
 
+def apply_weights(*, weights_file: Path = '', field_name = '',
+                     src_field_file: Path = '', dst_field_file: Path = ''):
+    """Apply the regridding weights
+
+    :param weights_file: netCDF file that will hold the regridding weights
+    :param field_name: name of the field in the source field file
+    :param src_field_file: name of the source field file
+    :param dst_field_file: name of the destination field file
+    """
+
+    # create a regridder
+    rg = mint.RegridEdges()
+
+    if str(weights_file) is '.':
+        raise RuntimeError('ERROR: must specify a weights file')
+    if field_name is '':
+        raise RuntimeError('ERROR: must specify a field name')
+    if str(src_field_file) is '.':
+        raise RuntimeError('ERROR: must specify a source field file')
+    if str(dst_field_file) is '.':
+        raise RuntimeError('ERROR: must specify a destination field file')
+
+    rg.loadWeights(str(weights_file))
+
+    numSrcEdges = rg.getNumSrcEdges()
+    numDstEdges = rg.getNumDstEdges()
+
+    srcData = numpy.zeros((numSrcEdges,), numpy.float64)
+    dstData = numpy.zeros((numDstEdges,), numpy.float64)
+
+    # initialize the slices by reading the metcdf metadata from file
+    append = 0; # new file
+    numSlices = rg.initSliceIter(src_field_file, dst_field_file, append, field_name)
+
+    for i in range(numSlices):
+
+        rg.loadSrcSlice(srcData);
+        rg.apply(srcData, dstData)
+        rg.dumpDstSlice(dstData);
+        rg.nextSlice()
+
+
 
 def polyline_integral(*, src_grid_file: Path = '', src_grid_name: str = '', src_grid_flag: int = 0,
                          src_field_name: str = 'u',
@@ -108,4 +151,4 @@ def polyline_integral(*, src_grid_file: Path = '', src_grid_name: str = '', src_
 
 
 if __name__ == '__main__':
-    defopt.run([compute_weights, polyline_integral])
+    defopt.run([compute_weights, apply_weights, polyline_integral])

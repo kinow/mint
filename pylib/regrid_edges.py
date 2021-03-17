@@ -97,8 +97,7 @@ class RegridEdges(object):
 
         :returns number
         """
-        LIB.mnt_regridedges_getNumSrcEdges.argtypes = [POINTER(c_void_p)]
-        LIB.mnt_regridedges_getNumSrcEdges.restype = c_size_t
+        LIB.mnt_regridedges_getNumSrcEdges.argtypes = [POINTER(c_void_p), POINTER(c_size_t)]
         n = c_size_t()
         ier = LIB.mnt_regridedges_getNumSrcEdges(self.obj, byref(n))
         if ier:
@@ -112,8 +111,7 @@ class RegridEdges(object):
 
         :returns number
         """
-        LIB.mnt_regridedges_getNumDstEdges.argtypes = [POINTER(c_void_p)]
-        LIB.mnt_regridedges_getNumDstEdges.restype = c_size_t
+        LIB.mnt_regridedges_getNumDstEdges.argtypes = [POINTER(c_void_p), POINTER(c_size_t)]
         n = c_size_t()
         ier = LIB.mnt_regridedges_getNumDstEdges(self.obj, byref(n))
         if ier:
@@ -173,5 +171,74 @@ class RegridEdges(object):
         ier = LIB.mnt_regridedges_apply(self.obj, srcdata, dstdata)
         if ier:
             error_handler(FILE, 'apply', ier)
+
+
+    def initSliceIter(self, srcfieldfile, dstfieldfile, append, fieldname):
+        """
+        Inititalize the slice iterator
+
+        :param srcfieldfile: file name where the source field data are stored
+        :param dstfieldfile: file name where the regridded data will be stored
+        :param append: whether or not the data should be appended to an existing file
+        :param fieldname: field name in the source field file
+        :returns number of slices
+        """
+        numSlices = c_size_t()
+        appendInt = 0
+        if append:
+            appendInt = 1
+        LIB.mnt_regridedges_initSliceIter.argtypes = [POINTER(c_void_p), 
+                                                      c_char_p, c_int, 
+                                                      c_char_p, c_int,
+                                                      c_int, 
+                                                      c_char_p, c_int,
+                                                      POINTER(c_size_t)]
+        ier = LIB.mnt_regridedges_initSliceIter(self.obj,
+                                                srcfieldfile, len(srcfieldfile),
+                                                dstfieldfile, len(dstfieldfile),
+                                                appendInt,
+                                                fieldname, len(fieldname),
+                                                byref(numSlices))
+        if ier:
+            error_handler(FILE, 'initSliceIter', ier)
+
+        return numSlices.value
+
+
+    def loadSrcSlice(self, data):
+        """
+        Load a slice of the source field from the 2D UGRID file
+
+        :param data: array of type numpy.float64 and size number of source grid edges
+        """
+        LIB.mnt_regridedges_loadSrcSlice.argtypes = [POINTER(c_void_p), 
+                                                     numpy.ctypeslib.ndpointer(dtype=numpy.float64)]
+        ier = LIB.mnt_regridedges_loadSrcSlice(self.obj, data)
+        if ier:
+            error_handler(FILE, 'loadSrcSlice', ier)
+
+
+    def dumpDstSlice(self, data):
+        """
+        Dump a slice of the destination field slice to 2D UGRID file
+
+        :param data: array of type numpy.float64 and size number of destination grid edges
+        """
+        LIB.mnt_regridedges_dumpDstSlice.argtypes = [POINTER(c_void_p),
+                                                     numpy.ctypeslib.ndpointer(dtype=numpy.float64)]
+        ier = LIB.mnt_regridedges_dumDstSlice(self.obj, data)
+        if ier:
+            error_handler(FILE, 'dumpDstSlice', ier)
+
+
+    def nextSlice(self):
+        """
+        Increment the slice iterator
+        """
+        LIB.mnt_regridedges_nextSlice.argtypes = [POINTER(c_void_p)]
+        ier = LIB.mnt_regridedges_nextSlice(self.obj)
+        if ier:
+            error_handler(FILE, 'nextSlice', ier)
+
 
 
