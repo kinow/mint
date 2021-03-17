@@ -5,10 +5,10 @@ from pathlib import Path
 import numpy
 import mint
 
-def compute_regrid_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_grid_flag: int = 0, 
+def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_grid_flag: int = 0, 
                               dst_grid_file: Path = '', dst_grid_name: str = '', dst_grid_flag: int = 0,
                               weights_file: Path = '', periodx : float = 360.):
-    """Regrid
+    """Compute weights
 
     :param src_grid_file: name of the file holding the source grid
     :param src_grid_name: name of the source grid stored in the netCDF file
@@ -17,7 +17,7 @@ def compute_regrid_weights(*, src_grid_file: Path = '', src_grid_name: str = '',
     :param dst_grid_name: name of the destination grid stored in the netCDF file
     :param dst_grid_flags: use 0 for lat-lon and 1 for cubed-sphere
     :param weights_file: netCDF file that will hold the regridding weights
-    :param periodx: periodicity in x, can be 0 if non-periodic
+    :param periodx: periodicity in longitudes, can be 0 if non-periodic
     """
     # create a regridder
     rg = mint.RegridEdges()
@@ -34,7 +34,7 @@ def compute_regrid_weights(*, src_grid_file: Path = '', src_grid_name: str = '',
 
     # 0, 0 does not apply any transformations to the grid (appropriate for lat-lon).
     # All other grid types should apply (1, 1)
-    rg.setDstGridFlags(0, 0):
+    rg.setDstGridFlags(0, 0)
     if dst_grid_flag:
         rg.setDstGridFlags(1, 1)
 
@@ -44,8 +44,8 @@ def compute_regrid_weights(*, src_grid_file: Path = '', src_grid_name: str = '',
     # compute the regridding weights. numCellsPerBucket is used to accelerate the cell
     # search. The smaller numCellPerBucket the faster the search. However, there are
     # edge cases where the search fails when numCellsPerBucket is too small.
-    # periodX is the periodicity length to add/subtract to make the cells well behaved. 
-    # (periodX can be 0 if a regional model)
+    # periodX is the periodicity length that will be added/subtracted to make the cells well behaved. 
+    # (set periodX = 0 in a regional model away from the dateline)
     rg.build(numCellsPerBucket=128, periodX=periodx, debug=2)
 
     if weights_file:
@@ -61,8 +61,11 @@ def polyline_integral(*, src_grid_file: Path = '', src_grid_name: str = '', src_
     """Compute the polyline flux integral
 
     :param src_grid_file: name of the file holding the source grid
+    :param src_grid_name: name of the source grid
     :param src_grid_flags: use 0 for lat-lon and 1 for cubed-sphere
-    :param points: target points as a string, e.g. '(0., -90.),(360., 90.)'
+    :param src_field_name: name of the field
+    :param points: target points as a string in lon-lat space, e.g. '(0., -90.),(360., 90.)'
+    :param periodx: periodicity in longitudes, can be 0 if non-periodic
     :returns: flux integral
     """
 
@@ -85,4 +88,4 @@ def polyline_integral(*, src_grid_file: Path = '', src_grid_name: str = '', src_
 
 
 if __name__ == '__main__':
-    defopt.run(['regrid', 'polyline_integral'])
+    defopt.run([compute_weights, polyline_integral])
