@@ -4,6 +4,124 @@ import defopt
 from pathlib import Path
 import numpy
 import mint
+import netCDF4
+
+
+def generate_lonlat_grid(*, nx: int = 10, ny: int = 5, grid_file: Path = '', grid_name: str='lonlat_mesh'):
+    """Generate lon-lat grid
+
+    :param nx: number of longitude cells
+    :param ny: number of latitude cells
+    :grid_file: name of the output UGRID2D file
+    """
+    if str(grid_file.name) is '.':
+        raise RuntimeError('ERROR: must specify grid file')
+
+    nc = netCDF4.Dataset(grid_file, 'w')
+
+    nx1, ny1 = nx + 1, ny + 1
+    nnodes = nx1 * ny1
+    nedges = nx*ny1 + nx1*ny
+    nfaces = nx * ny
+    nnodesId = nc.createDimension('nnodes', nnodes)
+    nedgesId = nc.createDimension('nedges', nedges)
+    nfacesId = nc.createDimension('nfaces', nfaces)
+    fourId = nc.createDimension('four', 4)
+    twoId = nc.createDimension('two', 2)
+
+    mesh = nc.createVariable(grid_name, "int", [])
+    mesh.cf_role = 'mesh_topology'
+    mesh.topology_dimension = 2
+    mesh.node_coordinates = 'lon lat'
+    mesh.face_node_connectivity = 'face_node'
+    mesh.face_edge_connectivity = 'face_edge'
+    mesh.edge_node_connectivity = 'edge_node'
+
+
+    faceNodeConn = nc.createVariable("face_node", "int64", ("nfaces", "four"))
+    faceNodeConn.cf_role = "face_node_connectivity"
+    faceNodeConn.start_index = 0
+
+    faceEdgeConn = nc.createVariable("face_edge", "int64", ("nfaces", "four"))
+    faceEdgeConn.cf_role = "face_edge_connectivity"
+    faceEdgeConn.start_index = 0
+
+    edgeNodeConn = nc.createVariable("edge_node", "int64", ("nedges", "two"))
+    edgeNodeConn.cf_role = "node_edge_connectivity"
+    edgeNodeConn.start_index = 0
+
+    xvar = nc.createVariable("lon", "float64", ("nnodes",))
+    xvar.standard_name = "longitude"
+    xvar.units = "degrees_east"
+
+    yvar = nc.createVariable("lat", "float64", ("nnodes",))
+    yvar.standard_name = "latitude"
+    yvar.units = "degrees_north"
+
+    # set the lats/lons
+    lats = numpy.zeros((nnodes,), numpy.float64)
+    lons = numpy.zeros((nnodes,), numpy.float64)
+    dlat, dlon = 180./float(ny), 360.0/float(nx)
+    for j in range(ny1):
+        for i in range(nx1):
+            index = i + nx1*j
+            lons[index] = 0.0 + i*dlon
+            lats[index] = -90.0 + j*dlat
+            x, y = lons[index], lats[index]
+    xvar[:] = lons
+    yvar[:] = lats
+
+    # face-node connectivity
+    fn = numpy.zeros((nfaces, 4), numpy.int64)
+    count = 0
+    for j in range(ny):
+        for i in range(nx):
+            i00 = i + 0 + nx1*(j + 0)
+            i10 = i + 1 + nx1*(j + 0)
+            i11 = i + 1 + nx1*(j + 1)
+            i01 = i + 0 + nx1*(j + 1)
+            fn[count, :] = i00, i10, i11, i01
+            count += 1
+    faceNodeConn[...] = fn
+
+    # edge-node connectivity
+    en = numpy.zeros((nedges, 2), numpy.int64)
+
+    # x edges
+    count = 0
+    for j in range(ny + 1):
+        for i in range(nx):
+            i00 = i + 0 + nx1*(j + 0)
+            i10 = i + 1 + nx1*(j + 0)
+            en[count, :] = i00, i10
+            count += 1
+
+    # y edges
+    for j in range(ny):
+        for i in range(nx + 1):
+            i00 = i + 0 + nx1*(j + 0)
+            i01 = i + 0 + nx1*(j + 1)
+            en[count, :] = i00, i01
+            count += 1
+
+    edgeNodeConn[...] = en
+
+    # face-edge connectivity
+    fe = numpy.zeros((nfaces, 4), numpy.int64)
+    count = 0
+    for j in range(ny):
+        for i in range(nx):
+            is0 = 0 + i + 0 + (nx + 0)*(j + 0)
+            is1 = 0 + i + 0 + (nx + 0)*(j + 1)
+            i0s = nx*ny1 + i + 0 + nx1*(j + 0)
+            i1s = nx*ny1 + i + 1 + nx1*(j + 0)
+            fe[count, :] = is0, i1s, is1, i0s
+            count += 1
+    faceEdgeConn[...] = fe
+
+    nc.close()
+
+
 
 def compute_weights(*, src_grid_file: Path = '', src_grid_name: str = '', src_grid_flag: int = 0, 
                        dst_grid_file: Path = '', dst_grid_name: str = '', dst_grid_flag: int = 0,
@@ -151,4 +269,4 @@ def polyline_integral(*, src_grid_file: Path = '', src_grid_name: str = '', src_
 
 
 if __name__ == '__main__':
-    defopt.run([compute_weights, apply_weights, polyline_integral])
+    defopt.run([generate_lonlat_grid, compute_weights, apply_weights, polyline_integral])
