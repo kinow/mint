@@ -96,7 +96,65 @@ void test1() {
     ier = mnt_regridedges_del(&rg);
     assert(ier == 0);
 
+
+    // read the weights, get the grid names from the weights file, 
+    // read the grids and then interpolate
+
+    ier = mnt_regridedges_new(&rg);
+    assert(ier == 0);
+
+    ier = mnt_regridedges_loadWeights(&rg, outputFile.c_str(), (int) outputFile.size());
+    assert(ier == 0);
+
+    std::string fn = rg->srcGridFile + ":" + rg->srcGridName;
+    std::cout << "test1: src grid file and name is " << fn << '\n';
+    ier = mnt_regridedges_loadSrcGrid(&rg, fn.c_str(), (int) fn.size());
+    assert(ier == 0);
+
+    fn = rg->dstGridFile + ":" + rg->dstGridName;
+    std::cout << "test1: dst grid file and name is " << fn << '\n';
+    ier = mnt_regridedges_loadDstGrid(&rg, fn.c_str(), (int) fn.size());
+    assert(ier == 0);
+
+    srcData.resize(numSrcEdges);
+    dstData.resize(numDstEdges);
+
+    resFile = "regridded_line_integrated_velocity_2.nc";
+
+    // initialize the slices by reading the metcdf metadata from file
+    fieldName = "line_integrated_velocity";
+    dstFieldFile = "line_integrated_velocity.nc";
+    append = 0; // new file
+    ier = mnt_regridedges_initSliceIter(&rg, 
+                                        srcFile.c_str(), (int) srcFile.size(),
+                                        dstFieldFile.c_str(), (int) dstFieldFile.size(),
+                                        append,
+                                        fieldName.c_str(), (int) fieldName.size(),
+                                        &numSlices);
+    assert(ier == 0);
+
+    for (size_t i = 0; i < numSlices; ++i) {
+        ier = mnt_regridedges_loadSrcSlice(&rg, &srcData[0]);
+        assert(ier == 0);
+
+        ier = mnt_regridedges_apply(&rg, &srcData[0], &dstData[0]);
+        assert(ier == 0);
+
+        ier = mnt_regridedges_dumpDstSlice(&rg, &dstData[0]);
+        assert(ier == 0);
+
+        ier = mnt_regridedges_nextSlice(&rg);
+        assert(ier == 0);
+    }
+
+
+    ier = mnt_regridedges_del(&rg);
+    assert(ier == 0);
+
+
+
 }
+
 
 void regridEdgeFieldTest(const std::string& testName, const std::string& srcFile, const std::string& dstFile) {
 
