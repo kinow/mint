@@ -97,6 +97,18 @@ struct RegridEdges_t {
     /** start indices for multi-array iterator */
     std::vector<size_t> startIndices;
 
+    /** name of the source grid file */
+    std::string srcGridFile;
+
+    /** name of the source grid */
+    std::string srcGridName;
+
+    /** name of the destination grid file */
+    std::string dstGridFile;
+
+    /** name of the destination grid */
+    std::string dstGridName;
+
 };
 
 /**

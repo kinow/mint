@@ -438,6 +438,17 @@ int mnt_regridedges_loadSrcGrid(RegridEdges_t** self,
     // Fortran strings don't come with null-termination character. Copy string 
     // into a new one and add '\0'
     std::string filename = std::string(fort_filename, n);
+
+    size_t posCol = filename.find(':');
+    if (posCol == std::string::npos) {
+        // could not find ':'
+        return 1;
+    }
+
+    // extract the file and grid names and store them
+    (*self)->srcGridFile = filename.substr(0, posCol);
+    (*self)->srcGridName = filename.substr(posCol + 1, std::string::npos);
+
     int ier = mnt_grid_loadFrom2DUgrid(&((*self)->srcGridObj), filename.c_str());
     (*self)->srcGrid = (*self)->srcGridObj->grid;
     return ier;
@@ -449,6 +460,18 @@ int mnt_regridedges_loadDstGrid(RegridEdges_t** self,
     // Fortran strings don't come with null-termination character. Copy string 
     // into a new one and add '\0'
     std::string filename = std::string(fort_filename, n);
+
+    size_t posCol = filename.find(':');
+    if (posCol == std::string::npos) {
+        // could not find ':'
+        return 1;
+    }
+
+    // extract the file and grid names and store them
+    (*self)->dstGridFile = filename.substr(0, posCol);
+    (*self)->dstGridName = filename.substr(posCol + 1, std::string::npos);
+
+
     int ier = mnt_grid_loadFrom2DUgrid(&((*self)->dstGridObj), filename.c_str());
     (*self)->dstGrid = (*self)->dstGridObj->grid;
     return ier;
@@ -865,6 +888,16 @@ int mnt_regridedges_dumpWeights(RegridEdges_t** self,
         std::cerr << nc_strerror (ier);
         return 1;
     }
+
+    // global attributes
+    ier = nc_put_att_text(ncid, NC_GLOBAL, "src_grid_file", 
+                          (*self)->srcGridFile.size(), (*self)->srcGridFile.c_str());
+    ier = nc_put_att_text(ncid, NC_GLOBAL, "src_grid_name", 
+                          (*self)->srcGridName.size(), (*self)->srcGridName.c_str());
+    ier = nc_put_att_text(ncid, NC_GLOBAL, "dst_grid_file", 
+                          (*self)->dstGridFile.size(), (*self)->dstGridFile.c_str());
+    ier = nc_put_att_text(ncid, NC_GLOBAL, "dst_grid_name", 
+                          (*self)->dstGridName.size(), (*self)->dstGridName.c_str());
 
     // create dimensions
 
