@@ -40,8 +40,12 @@ extern "C"
 int mnt_regridedges_new(RegridEdges_t** self) {
     
     *self = new RegridEdges_t();
+
     (*self)->srcGrid = NULL;
     (*self)->dstGrid = NULL;
+    (*self)->srcGridObj = NULL;
+    (*self)->dstGridObj = NULL;
+
     (*self)->srcLoc = vmtCellLocator::New();
     (*self)->numPointsPerCell = 4; // 2d
     (*self)->numEdgesPerCell = 4;  // 2d
@@ -890,6 +894,24 @@ int mnt_regridedges_loadWeights(RegridEdges_t** self,
         std::cerr << nc_strerror (ier);
         return 13;
     }
+
+
+    // read the src and dst grids if not already created
+    if ((*self)->srcGridFile.size() > 0 && (*self)->srcGridName.size() && (*self)->srcGrid) {
+        std::string fn = (*self)->srcGridFile + ":" + (*self)->srcGridName;
+        ier = mnt_regridedges_loadSrcGrid(self, fn.c_str(), (int) fn.size());
+        if (ier != NC_NOERR) {
+            std::cerr << "ERROR: could not load src grid from \"" << fn << "\"!\n";
+        }
+    }
+    if ((*self)->dstGridFile.size() > 0 && (*self)->dstGridName.size() && (*self)->dstGrid) {
+        std::string fn = (*self)->dstGridFile + ":" + (*self)->dstGridName;
+        ier = mnt_regridedges_loadDstGrid(self, fn.c_str(), (int) fn.size());
+        if (ier != NC_NOERR) {
+            std::cerr << "ERROR: could not load dst grid from \"" << fn << "\"!\n";
+        }
+    }
+
 
     return 0;
 }

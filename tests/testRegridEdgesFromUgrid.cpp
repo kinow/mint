@@ -63,8 +63,6 @@ void test1() {
     std::vector<double> srcData(numSrcEdges);
     std::vector<double> dstData(numDstEdges);
 
-    std::string resFile = "regridded_line_integrated_velocity.nc";
-
     // initialize the slices by reading the metcdf metadata from file
     std::string fieldName = "line_integrated_velocity";
     std::string dstFieldFile = "line_integrated_velocity.nc";
@@ -103,23 +101,13 @@ void test1() {
     ier = mnt_regridedges_new(&rg);
     assert(ier == 0);
 
+    // the src and dst grids will be loaded after reading the src_grid_file and
+    // other attributes
     ier = mnt_regridedges_loadWeights(&rg, outputFile.c_str(), (int) outputFile.size());
-    assert(ier == 0);
-
-    std::string fn = rg->srcGridFile + ":" + rg->srcGridName;
-    std::cout << "test1: src grid file and name is " << fn << '\n';
-    ier = mnt_regridedges_loadSrcGrid(&rg, fn.c_str(), (int) fn.size());
-    assert(ier == 0);
-
-    fn = rg->dstGridFile + ":" + rg->dstGridName;
-    std::cout << "test1: dst grid file and name is " << fn << '\n';
-    ier = mnt_regridedges_loadDstGrid(&rg, fn.c_str(), (int) fn.size());
     assert(ier == 0);
 
     srcData.resize(numSrcEdges);
     dstData.resize(numDstEdges);
-
-    resFile = "regridded_line_integrated_velocity_2.nc";
 
     // initialize the slices by reading the metcdf metadata from file
     fieldName = "line_integrated_velocity";
