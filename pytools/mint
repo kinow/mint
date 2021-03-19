@@ -222,12 +222,11 @@ def apply_weights(*, weights_file: Path = '', field_name: str = '',
     srcData = numpy.zeros((numSrcEdges,), numpy.float64)
     dstData = numpy.zeros((numDstEdges,), numpy.float64)
 
-    # initialize the slices by reading the metcdf metadata from file
+    # initialize the slices by reading the netcdf metadata from file
     append = 0; # new file
-    numSlices = rg.initSliceIter(src_field_file, dst_field_file, append, field_name)
+    numSlices = rg.initSliceIter(str(src_field_file), str(dst_field_file), append, field_name)
 
     for i in range(numSlices):
-
         rg.loadSrcSlice(srcData);
         rg.apply(srcData, dstData)
         rg.dumpDstSlice(dstData);

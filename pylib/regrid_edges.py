@@ -194,10 +194,10 @@ class RegridEdges(object):
                                                       c_char_p, c_int,
                                                       POINTER(c_size_t)]
         ier = LIB.mnt_regridedges_initSliceIter(self.obj,
-                                                srcfieldfile, len(srcfieldfile),
-                                                dstfieldfile, len(dstfieldfile),
+                                                srcfieldfile.encode('utf-8'), len(srcfieldfile),
+                                                dstfieldfile.encode('utf-8'), len(dstfieldfile),
                                                 appendInt,
-                                                fieldname, len(fieldname),
+                                                fieldname.encode('utf-8'), len(fieldname),
                                                 byref(numSlices))
         if ier:
             error_handler(FILE, 'initSliceIter', ier)
