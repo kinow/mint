@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- python -*-
 
 import glob
 import os
@@ -10,8 +10,10 @@ import sys
 from Cython.Build import cythonize
 
 
+LIBRARY = "libmint"
+NAME = "python-mint"
 PACKAGE = "mint"
-
+DIR_NAME = "python_mint"
 
 def getCondaVTK():
     """get the VTK installed by conda"""
@@ -74,22 +76,20 @@ with open("version.txt") as f:
 
 # generate mint/__init__.py from mint/__init__.py.in
 init_file = ""
-with open(f"{PACKAGE}/__init__.py.in") as fi:
+with open(f"{DIR_NAME}/__init__.py.in") as fi:
     init_file = re.sub(r"@VERSION@", VERSION, fi.read())
-    with open(f"{PACKAGE}/__init__.py", "w") as fo:
+    with open(f"{DIR_NAME}/__init__.py", "w") as fo:
         fo.write(init_file)
 
 vtklib = getCondaVTK()
 nclib = getCondaNetCDF()
 
+# C++ 11 flag
+cpp11_flag = "-std=c++11"
+# give a chance to override the C++ 11 flag
 cpp_flags = os.getenv("CPPFLAGS")
-cxx_flags = os.getenv("CXXFLAGS")
-if cxx_flags is not None:
-    extra_compile_args = cxx_flags.split()
-elif cpp_flags is not None:
-    extra_compile_args = cpp_flags.split()
-else:
-    extra_compile_args = ["-std=c++11"]
+if cpp_flags:
+    cpp11_flag = cpp_flags  # on Windows: '/std:c11'
 
 print(f'VTK_VERSION          = {vtklib["VTK_VERSION"]}')
 print(f'VTK_INCLUDE_DIR      = {vtklib["VTK_INCLUDE_DIR"]}')
@@ -98,21 +98,43 @@ print(f'VTK_LIBRARIES        = {vtklib["VTK_LIBRARIES"]}')
 print(f'NETCDF_INCLUDE_DIR   = {nclib["NETCDF_INCLUDE_DIR"]}')
 print(f'NETCDF_LIBRARIES_DIR = {nclib["NETCDF_LIBRARIES_DIR"]}')
 print(f'NETCDF_LIBRARIES     = {nclib["NETCDF_LIBRARIES"]}')
-print(f"extra_compile_args   = {extra_compile_args}")
+print(f"C++11 flag           : {cpp11_flag}")
 
 extensions = [
     Extension(
-        f"lib{PACKAGE}",
+        LIBRARY,
         sources=glob.glob("src/*.cpp"),
         define_macros=[],
         include_dirs=["src/", vtklib["VTK_INCLUDE_DIR"], nclib["NETCDF_INCLUDE_DIR"]],
         libraries=vtklib["VTK_LIBRARIES"] + nclib["NETCDF_LIBRARIES"],
         library_dirs=[vtklib["VTK_INCLUDE_DIR"], nclib["NETCDF_LIBRARIES_DIR"]],
-        extra_compile_args=extra_compile_args,
-        language="c++",
+        extra_compile_args=[
+            cpp11_flag,
+        ],
     )
 ]
 
 setup(
-    ext_modules=cythonize(extensions, compiler_directives=dict(language_level=3)),
+    name=NAME,
+    version=VERSION,
+    author="Alexander Pletzer",
+    author_email="alexander.pletzer@nesi.org.nz",
+    description="Mimetic INTerpolation on the Sphere",
+    long_description="""
+Interpolates or regrids an edge centred field from a source grid to either a destination grid or a target element. The
+interpolation is mimetic in the sense that line integrals are conserved from source to destination grids, i.e. Stokes'
+theorem is statisfied to near machine precision.
+    """,
+    long_description_content_type="text/x-rst",
+    url="https://github.com/pletzer/mint",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+    ],
+    package_dir={PACKAGE: DIR_NAME}, # name of module -> directory
+    packages=[PACKAGE],
+    ext_modules=cythonize(extensions),
+    include_package_data=True,
+    install_requires=["numpy", "vtk==9.0.1", "netcdf4", "tbb"],
+    tests_require=["pytest"],
+    zip_safe=False,
 )
