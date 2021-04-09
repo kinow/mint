@@ -8,10 +8,14 @@ __version__ = "@VERSION@"
 
 # open shared library
 LIB = None
+print(f'looking for shared library under {__path__[0] + "/.."}')
 for libfile in Path(__path__[0] + '/..').glob('libmint.cpython*'):
+    print(f'libfile = {libfile}')
     LIB = CDLL(libfile)
     if LIB:
         break
+if not LIB:
+    raise RuntimeError('could not find libmint shared library')
 
 __all__ = [LIB, 'regrid_edges', 'grid', 'polyline_integral']
 
