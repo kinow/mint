@@ -89,40 +89,260 @@ void computeLoopIntegrals(Grid_t* grd, const std::vector<double>& edgeData,
     *avgAbsLoop /= double(numCells);
 }
 
+
+class RegridEdgesApp {
+
+public:
+
+    RegridEdgesApp(int argc, char** argv, bool& argParseSucess);
+
+    ~RegridEdgesApp();
+
+    int checkOptions();
+
+    int readGrids();
+
+    int computeWeights();
+
+    int applyWeights();
+
+private:
+
+    int setUpWriter(int srcNdims, const size_t* srcDims);
+
+    CmdLineArgParser args;
+    NcFieldRead_t* reader;
+    NcFieldWrite_t* writer;
+    NcAttributes_t* attrs;
+    NcDimensions_t* srcVarDimsObj;
+    RegridEdges_t* rg;
+
+    std::string srcFile;
+    std::string dstFile;
+    std::string weightsFile;
+    std::string loadWeightsFile;
+    std::string vtkOutputFile;
+    std::string dstEdgeDataFile;
+
+    std::string variableName;
+
+    std::vector<double> srcEdgeData;
+    std::vector<double> dstEdgeData;
+
+
+    size_t numSrcEdges;
+    size_t numDstEdges;
+    size_t numSrcCells;
+    size_t numDstCells;
+
+};
+
+RegridEdgesApp::RegridEdgesApp(int argc, char** argv, bool& success) {
+
+    // initialization
+    this->reader = NULL;
+    this->writer = NULL;
+    this->rg = NULL;
+    this->attrs = NULL;
+    this->srcVarDimsObj = NULL;
+
+    this->numSrcEdges = 0;
+    this->numDstEdges = 0;
+    this->numSrcCells = 0;
+    this->numDstCells = 0;
+
+    // command line options
+    this->args.setPurpose("Regrid an edge centred field.");
+    this->args.set("-s", std::string(""), "UGRID source grid file and mesh name, specified as \"filename:meshname\"");
+    this->args.set("-v", std::string(""), "Specify edge staggered field variable name in source UGRID file, varname[@filename:meshname]");
+    this->args.set("-P", 0.0, "Specify the periodicity length in longitudes (default is non-periodic)");
+    this->args.set("-d", std::string(""), "UGRID destination grid file name");
+    this->args.set("-w", std::string(""), "Write interpolation weights to file");
+    this->args.set("-W", std::string(""), "Load interpolation weights from file");
+    this->args.set("-o", std::string(""), "Specify output VTK file where regridded edge data are saved");
+    this->args.set("-O", std::string(""), "Specify output 2D UGRID file where regridded edge data are saved");
+    this->args.set("-S", 1, "Set to zero to disable source grid regularization, -S 0 is required for uniform lon-lat grid");
+    this->args.set("-D", 1, "Set to zero to disable destination grid regularization, -S 0 is required for uniform lon-lat grid");
+    this->args.set("-N", 128, "Average number of cells per bucket");
+    this->args.set("-debug", 1, "0=no checks, 1=print outside segments, 2=save outside segments");
+
+    success = this->args.parse(argc, argv);
+    bool help = this->args.get<bool>("-h");
+
+    if (help) {
+        this->args.help();
+    }
+
+    if (!success) {
+        std::cerr << "ERROR when parsing command line arguments\n";
+        this->args.help();
+    }
+
+    // get the file names
+    this->srcFile = this->args.get<std::string>("-s");
+    this->dstFile = this->args.get<std::string>("-d");
+    this->weightsFile = this->args.get<std::string>("-w");
+    this->loadWeightsFile = this->args.get<std::string>("-W");
+    this->vtkOutputFile = this->args.get<std::string>("-o");
+    this->dstEdgeDataFile = this->args.get<std::string>("-O");
+
+    // create regridder 
+    mnt_regridedges_new(&this->rg);
+
+    std::cerr << "Done with ctor\n";
+}
+
+RegridEdgesApp::~RegridEdgesApp() {
+
+    if (this->rg) mnt_regridedges_del(&this->rg);
+    std::cerr << "Done with dtor\n";
+}
+
+int 
+RegridEdgesApp::checkOptions() {
+
+    // run some checks
+    if (this->srcFile.size() == 0) {
+        std::cerr << "ERROR: must specify a source grid file (-s)\n";
+        return 2;
+    }
+    if (this->dstFile.size() == 0) {
+        std::cerr << "ERROR: must specify a destination grid file (-d)\n";
+        return 3;
+    }
+
+    std::cerr << "Done with checkOptions\n";
+    return 0;
+}
+
+int
+RegridEdgesApp::readGrids() {
+
+    int ier;
+
+    // defaults are suitable for cubed-sphere 
+    int fixLonAcrossDateline = 1;
+    int averageLonAtPole = 1;
+    if (this->args.get<int>("-S") == 0) {
+        fixLonAcrossDateline = 0;
+        averageLonAtPole = 0;
+        std::cout << "info: no regularization applied to source grid\n";
+    }
+    ier = mnt_regridedges_setSrcGridFlags(&this->rg, fixLonAcrossDateline, averageLonAtPole);
+
+    // ...destination grid
+    fixLonAcrossDateline = 1;
+    averageLonAtPole = 1;
+    if (this->args.get<int>("-D") == 0) {
+        fixLonAcrossDateline = 0;
+        averageLonAtPole = 0;
+        std::cout << "info: no regularization applied to destination grid\n";
+    }
+    ier = mnt_regridedges_setDstGridFlags(&this->rg, fixLonAcrossDateline, averageLonAtPole);
+
+    // read the source grid
+    ier = mnt_regridedges_loadSrcGrid(&this->rg, this->srcFile.c_str(), this->srcFile.size());
+    if (ier != 0) {
+        std::cerr << "ERROR: could not read file \"" << this->srcFile << "\"\n";
+        return 4;
+    }
+
+    // read the destination grid
+    ier = mnt_regridedges_loadDstGrid(&this->rg, this->dstFile.c_str(), this->dstFile.size());
+    if (ier != 0) {
+        std::cerr << "ERROR: could not read file \"" << this->dstFile << "\"\n";
+        return 5;
+    }
+
+    // get the number of edges and allocate src/dst data
+    ier = mnt_regridedges_getNumSrcEdges(&this->rg, &this->numSrcEdges);
+    ier = mnt_regridedges_getNumDstEdges(&this->rg, &this->numDstEdges);
+    std::cout << "info: number of src edges: " << this->numSrcEdges << '\n';
+    std::cout << "info: number of dst edges: " << this->numDstEdges << '\n';
+
+    mnt_regridedges_getNumSrcCells(&this->rg, &this->numSrcCells);
+    mnt_regridedges_getNumDstCells(&this->rg, &this->numDstCells);
+    std::cout << "info: number of src cells: " << this->numSrcCells << '\n';
+    std::cout << "info: number of dst cells: " << this->numDstCells << '\n';
+
+    std::cerr << "Done with readGrids\n";
+    return 0;
+}
+
+int
+RegridEdgesApp::computeWeights() {
+
+    int ier;
+
+    if (this->loadWeightsFile.size() == 0) {
+
+        // compute the weights
+        std::cout << "info: computing weights\n";
+        int numCellsPerBucket = this->args.get<int>("-N");
+        int periodicX = this->args.get<double>("-P");
+        int debugFlag = this->args.get<int>("-debug");
+        ier = mnt_regridedges_build(&rg, numCellsPerBucket, periodicX, debugFlag);
+        if (ier != 0) {
+            return 6;
+        }
+    
+        // save the weights to file
+        if (this->weightsFile.size() != 0) {
+            std::cout << "info: saving weights in file " << this->weightsFile << '\n';
+            ier = mnt_regridedges_dumpWeights(&this->rg, 
+                                              this->weightsFile.c_str(), (int) this->weightsFile.size());
+            if (ier != 0) {
+                return 7;
+            }
+        }
+    }
+    else {
+        // weights have been pre-computed, just load them
+        std::cout << "info: loading weights from file " << this->loadWeightsFile << '\n';
+        ier = mnt_regridedges_loadWeights(&this->rg, 
+                                          this->loadWeightsFile.c_str(), (int) this->loadWeightsFile.size());
+        if (ier != 0) {
+            return 7;
+        }
+
+    }
+
+    std::cerr << "Done with computeWeights\n";
+    return 0;
+}
+
 /**
  * Set up the writer 
  * @param srcNdims number of dimensions
  * @param srcDims  dimensions of the grid
- * @param numDstEdges number of destination edges
- * @param vname edge data variable name
- * @param dstEdgeDataFile file name where the regridded data will be stored
- * @param attrs attributes object (will be modified)
- * @param writer returned writer object (caller should take care if disposing)
+ * @return error (0 is OK)
  */
-int setUpWriter(int srcNdims, const size_t* srcDims, size_t numDstEdges, 
-                const std::string& vname, const std::string& dstEdgeDataFile, 
-                NcAttributes_t* attrs, NcFieldWrite_t** writer) {
+int 
+RegridEdgesApp::setUpWriter(int srcNdims, const size_t* srcDims) {
 
     int ier;
 
-    std::pair<std::string, std::string> fm = split(dstEdgeDataFile, ':');
+    std::pair<std::string, std::string> fm = split(this->dstEdgeDataFile, ':');
     // get the dst file name
     std::string dstFileName = fm.first;
 
     int n1 = dstFileName.size();
-    int n2 = vname.size();
+    int n2 = this->variableName.size();
+
     const int append = 0; // new file
-    ier = mnt_ncfieldwrite_new(writer, dstFileName.c_str(), n1, vname.c_str(), n2, append);
+    ier = mnt_ncfieldwrite_new(&this->writer, dstFileName.c_str(), n1, 
+                               this->variableName.c_str(), n2, append);
     if (ier != 0) {
         std::cerr << "ERROR: create file " << dstFileName << " with field " 
-                  << vname << " in append mode " << append << '\n';
+                  << this->variableName << " in append mode " << append << '\n';
         return 14;
     }
 
-    ier = mnt_ncfieldwrite_setNumDims(writer, srcNdims); // matches the number of source field dimensions
+    ier = mnt_ncfieldwrite_setNumDims(&this->writer, srcNdims); // matches the number of source field dimensions
     if (ier != 0) {
-        std::cerr << "ERROR: cannot set the number of dimensions for field " << vname << " in file " << dstFileName << '\n';
-        ier = mnt_ncfieldwrite_del(writer);
+        std::cerr << "ERROR: cannot set the number of dimensions for field " 
+                  << this->variableName << " in file " << dstFileName << '\n';
+        ier = mnt_ncfieldwrite_del(&this->writer);
         return 15;
     }
 
@@ -133,160 +353,50 @@ int setUpWriter(int srcNdims, const size_t* srcDims, size_t numDstEdges,
     // add num_edges axis. WE SHOULD GET THIS FROM THE DEST FILE?
     std::string axname = "num_edges";
     int n3 = axname.size();
-    ier = mnt_ncfieldwrite_setDim(writer, srcNdims - 1, axname.c_str(), n3, numDstEdges);
+    ier = mnt_ncfieldwrite_setDim(&this->writer, srcNdims - 1, axname.c_str(), n3, numDstEdges);
     if (ier != 0) {
         std::cerr << "ERROR: setting dimension 0 (" << axname << ") to " << numDstEdges
-                  << " for field " << vname << " in file " << dstFileName << '\n';
-        ier = mnt_ncfieldwrite_del(writer);
+                  << " for field " << this->variableName << " in file " << dstFileName << '\n';
+        ier = mnt_ncfieldwrite_del(&this->writer);
         return 16;
     }
 
     // add the remaining axes, ASSUME THE ADDITIONAL DST AXES TO MATCH THE SRC AXES
     for (int i = 0; i < srcNdims - 1; ++i) {
         axname = "n_" + toString(srcDims[i]);
-        ier = mnt_ncfieldwrite_setDim(writer, i, axname.c_str(), axname.size(), srcDims[i]);
+        ier = mnt_ncfieldwrite_setDim(&this->writer, i, axname.c_str(), axname.size(), srcDims[i]);
     }
 
     // add the attributes
-    ier = mnt_ncattributes_write(&attrs, (*writer)->ncid, (*writer)->varid);
+    ier = mnt_ncattributes_write(&this->attrs, this->writer->ncid, this->writer->varid);
     if (ier != 0) {
-        std::cerr << "ERROR: writing attributes for field " << vname << " in file " << dstFileName << '\n';
-        ier = mnt_ncfieldwrite_del(writer);
+        std::cerr << "ERROR: writing attributes for field " << this->variableName << " in file " << dstFileName << '\n';
+        ier = mnt_ncfieldwrite_del(&this->writer);
         return 17;
     }
 
+    std::cerr << "Done with setUpWriter\n";
     return 0;
 }
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-int main(int argc, char** argv) {
+int 
+RegridEdgesApp::applyWeights() {
 
     int ier;
-    NcFieldRead_t* reader = NULL;
-    NcFieldWrite_t* writer = NULL;
+    this->srcEdgeData.resize(this->numSrcEdges);
+    this->dstEdgeData.resize(this->numDstEdges);
 
-    CmdLineArgParser args;
-    args.setPurpose("Regrid an edge centred field.");
-    args.set("-s", std::string(""), "UGRID source grid file and mesh name, specified as \"filename:meshname\"");
-    args.set("-v", std::string(""), "Specify edge staggered field variable name in source UGRID file, varname[@filename:meshname]");
-    args.set("-P", 0.0, "Specify the periodicity length in longitudes (default is non-periodic)");
-    args.set("-d", std::string(""), "UGRID destination grid file name");
-    args.set("-w", std::string(""), "Write interpolation weights to file");
-    args.set("-W", std::string(""), "Load interpolation weights from file");
-    args.set("-o", std::string(""), "Specify output VTK file where regridded edge data are saved");
-    args.set("-O", std::string(""), "Specify output 2D UGRID file where regridded edge data are saved");
-    args.set("-S", 1, "Set to zero to disable source grid regularization, -S 0 is required for uniform lon-lat grid");
-    args.set("-D", 1, "Set to zero to disable destination grid regularization, -S 0 is required for uniform lon-lat grid");
-    args.set("-N", 128, "Average number of cells per bucket");
-    args.set("-debug", 1, "0=no checks, 1=print outside segments, 2=save outside segments");
+    std::string varAtFileMesh = this->args.get<std::string>("-v");
 
-    bool success = args.parse(argc, argv);
-    bool help = args.get<bool>("-h");
-
-    if (help) {
-        args.help();
-        return 0;
-    }
-
-    if (!success) {
-        std::cerr << "ERROR when parsing command line arguments\n";
-        return 1;
-    }
-
-    // extract the command line arguments
-    std::string srcFile = args.get<std::string>("-s");
-    std::string dstFile = args.get<std::string>("-d");
-    std::string weightsFile = args.get<std::string>("-w");
-    std::string loadWeightsFile = args.get<std::string>("-W");
-    std::string vtkOutputFile = args.get<std::string>("-o");
-    std::string dstEdgeDataFile = args.get<std::string>("-O");
-
-    // run some checks
-    if (srcFile.size() == 0) {
-        std::cerr << "ERROR: must specify a source grid file (-s)\n";
-        return 2;
-    }
-    if (dstFile.size() == 0) {
-        std::cerr << "ERROR: must specify a destination grid file (-d)\n";
-        return 3;
-    }
-
-    // create regridder 
-    RegridEdges_t* rg;
-    mnt_regridedges_new(&rg);
-
-    // defaults are suitable for cubed-sphere 
-    int fixLonAcrossDateline = 1;
-    int averageLonAtPole = 1;
-    if (args.get<int>("-S") == 0) {
-        fixLonAcrossDateline = 0;
-        averageLonAtPole = 0;
-        std::cout << "info: no regularization applied to source grid\n";
-    }
-    ier = mnt_regridedges_setSrcGridFlags(&rg, fixLonAcrossDateline, averageLonAtPole);
-
-    // ...destination grid
-    fixLonAcrossDateline = 1;
-    averageLonAtPole = 1;
-    if (args.get<int>("-D") == 0) {
-        fixLonAcrossDateline = 0;
-        averageLonAtPole = 0;
-        std::cout << "info: no regularization applied to destination grid\n";
-    }
-    ier = mnt_regridedges_setDstGridFlags(&rg, fixLonAcrossDateline, averageLonAtPole);
-
-    // read the source grid
-    ier = mnt_regridedges_loadSrcGrid(&rg, srcFile.c_str(), srcFile.size());
-    if (ier != 0) {
-        std::cerr << "ERROR: could not read file \"" << srcFile << "\"\n";
-        return 4;
-    }
-
-    // read the destination grid
-    ier = mnt_regridedges_loadDstGrid(&rg, dstFile.c_str(), dstFile.size());
-    if (ier != 0) {
-        std::cerr << "ERROR: could not read file \"" << dstFile << "\"\n";
-        return 5;
-    }
-
-    if (loadWeightsFile.size() == 0) {
-
-        // compute the weights
-        std::cout << "info: computing weights\n";
-        ier = mnt_regridedges_build(&rg, args.get<int>("-N"), 
-                                         args.get<double>("-P"), args.get<int>("-debug"));
-        if (ier != 0) {
-            return 6;
-        }
-    
-        // save the weights to file
-        if (weightsFile.size() != 0) {
-            std::cout << "info: saving weights in file " << weightsFile << '\n';
-            ier = mnt_regridedges_dumpWeights(&rg, weightsFile.c_str(), (int) weightsFile.size());
-        }
-
-    }
-    else {
-
-        // weights have been pre-computed, just load them
-        std::cout << "info: loading weights from file " << loadWeightsFile << '\n';
-        ier = mnt_regridedges_loadWeights(&rg, loadWeightsFile.c_str(), (int) loadWeightsFile.size());
-        if (ier != 0) {
-            return 7;
-        }
-
-    }
-
-    std::string varAtFileMesh = args.get<std::string>("-v");
     if (varAtFileMesh.size() > 0) {
 
         // get the variable name and the source file/mesh names
         std::pair<std::string, std::string> vfm = split(varAtFileMesh, '@');
-        std::string vname = vfm.first;
+        this->variableName = vfm.first;
+
         // by default the variable is stored in srcFile
-        std::string srcFileMeshName = srcFile;
+        std::string srcFileMeshName = this->srcFile;
         if (vfm.second.size() > 0) {
             srcFileMeshName = vfm.second;
         }
@@ -302,76 +412,58 @@ int main(int argc, char** argv) {
         }
 
         int srcVarid;
-        ier = nc_inq_varid(srcNcid, vname.c_str(), &srcVarid);
+        ier = nc_inq_varid(srcNcid, this->variableName.c_str(), &srcVarid);
         if (ier != 0) {
-            std::cerr << "ERROR: could not find variable \"" << vname << "\" in file \"" << srcFileName << "\"\n";
+            std::cerr << "ERROR: could not find variable \"" << this->variableName 
+                    << "\" in file \"" << srcFileName << "\"\n";
             return 9;
         }
 
         // get the attributes of the variable from the netcdf file
-        NcAttributes_t* attrs = NULL;
-        ier = mnt_ncattributes_new(&attrs);
+        ier = mnt_ncattributes_new(&this->attrs);
+
         // read the attributes
-        ier = mnt_ncattributes_read(&attrs, srcNcid, srcVarid);
+        ier = mnt_ncattributes_read(&this->attrs, srcNcid, srcVarid);
         if (ier != 0) {
             std::cerr << "ERROR: could not extract attributes for variable \"" 
-                      << vname << "\" in file \"" << srcFileName << "\"\n";
+                      << this->variableName << "\" in file \"" << srcFileName << "\"\n";
             return 11;
         }
 
         // read the dimensions
-        NcDimensions_t* srcVarDimsObj = NULL;
-        ier = mnt_ncdimensions_new(&srcVarDimsObj);
-        ier = mnt_ncdimensions_read(&srcVarDimsObj, srcNcid, srcVarid);
+        ier = mnt_ncdimensions_new(&this->srcVarDimsObj);
+        ier = mnt_ncdimensions_read(&this->srcVarDimsObj, srcNcid, srcVarid);
         int srcNdims;
-        ier = mnt_ncdimensions_getNumDims(&srcVarDimsObj, &srcNdims);
+        ier = mnt_ncdimensions_getNumDims(&this->srcVarDimsObj, &srcNdims);
         size_t srcDims[srcNdims];
         for (int i = 0; i < srcNdims; ++i) {
-            ier = mnt_ncdimensions_get(&srcVarDimsObj, i, &srcDims[i]); 
+            ier = mnt_ncdimensions_get(&this->srcVarDimsObj, i, &srcDims[i]); 
         }      
-        ier = mnt_ncdimensions_del(&srcVarDimsObj);
+        ier = mnt_ncdimensions_del(&this->srcVarDimsObj);
 
         // prepare to read the field 
-        ier = mnt_ncfieldread_new(&reader, srcNcid, srcVarid);
+        ier = mnt_ncfieldread_new(&this->reader, srcNcid, srcVarid);
 
-        // get the number of edges and allocate src/dst data
-        size_t numSrcEdges, numDstEdges;
-        mnt_regridedges_getNumSrcEdges(&rg, &numSrcEdges);
-        mnt_regridedges_getNumDstEdges(&rg, &numDstEdges);
-        std::cout << "info: number of src edges: " << numSrcEdges << '\n';
-        std::cout << "info: number of dst edges: " << numDstEdges << '\n';
-        std::vector<double> srcEdgeData(numSrcEdges);
-        std::vector<double> dstEdgeData(numDstEdges);
-
-        size_t numSrcCells, numDstCells;
-        mnt_regridedges_getNumSrcCells(&rg, &numSrcCells);
-        mnt_regridedges_getNumDstCells(&rg, &numDstCells);
-        std::cout << "info: number of src cells: " << numSrcCells << '\n';
-        std::cout << "info: number of dst cells: " << numDstCells << '\n';
 
         if (dstEdgeDataFile.size() > 0) {
             // user provided a file name to store the regridded data
 
-            ier = setUpWriter(srcNdims, srcDims, numDstEdges, vname, dstEdgeDataFile, 
-                              attrs, &writer);
+            ier = setUpWriter(srcNdims, srcDims);
             if (ier != 0) {
                 return ier;
             }
 
         }
 
-        std::vector<double> loop_integrals;
-        std::vector<double> dstCellByCellData;
-
-        // allocate
-        loop_integrals.resize(numDstCells);
-        dstCellByCellData.resize(numDstCells * NUM_EDGES_PER_CELL);
+        std::vector<double> loop_integrals(this->numDstCells);
+        std::vector<double> dstCellByCellData(this->numDstCells * NUM_EDGES_PER_CELL);
 
         // attach field to grid so we can save the data to file
-        mnt_grid_attach(&rg->dstGridObj, vname.c_str(), NUM_EDGES_PER_CELL, &dstCellByCellData[0]);
+        mnt_grid_attach(&this->rg->dstGridObj, this->variableName.c_str(), NUM_EDGES_PER_CELL, 
+                        &dstCellByCellData[0]);
 
-        std::string loop_integral_varname = std::string("loop_integrals_of_") + vname;
-        mnt_grid_attach(&rg->dstGridObj, loop_integral_varname.c_str(), 1, &loop_integrals[0]);
+        std::string loop_integral_varname = std::string("loop_integrals_of_") + this->variableName;
+        mnt_grid_attach(&this->rg->dstGridObj, loop_integral_varname.c_str(), 1, &loop_integrals[0]);
 
         //
         // iterate over the axes other than edge. ASSUMES num edges is the last dimension!!!
@@ -383,9 +475,10 @@ int main(int argc, char** argv) {
 
         // number of data values to read, regrid and write
         std::vector<size_t> srcCounts(srcNdims, 1);
-        srcCounts[srcNdims - 1] = numSrcEdges;
+        srcCounts[srcNdims - 1] = this->numSrcEdges;
         std::vector<size_t> dstCounts(srcNdims, 1);
-        dstCounts[srcNdims - 1] = numDstEdges;
+        dstCounts[srcNdims - 1] = this->numDstEdges;
+        std::cerr << "**** 4\n";
 
         MultiArrayIter_t* mai = NULL;
         // iterate over the non-edge indices only, hence srcNdims - 1
@@ -402,26 +495,32 @@ int main(int argc, char** argv) {
             ier = mnt_multiarrayiter_getIndices(&mai, &dstIndices[0]);
 
             // read a slice of the data from file
-            std::cout << "info: reading slice " << iter << " of field " << vname << " from file \"" << srcFileName << "\"\n";
-            ier = mnt_ncfieldread_dataSlice(&reader, &srcIndices[0], &srcCounts[0], &srcEdgeData[0]);
+            std::cout << "info: reading slice " << iter << " of field " 
+                      << this->variableName << " from file \"" << srcFileName << "\"\n";
+            ier = mnt_ncfieldread_dataSlice(&this->reader, &srcIndices[0], &srcCounts[0], 
+                                            &this->srcEdgeData[0]);
             if (ier != 0) {
-                std::cerr << "ERROR: could not read variable \"" << vname << "\" from file \"" << srcFileName << "\"\n";
+                std::cerr << "ERROR: could not read variable \"" << this->variableName 
+                          << "\" from file \"" << srcFileName << "\"\n";
                 return 12;
             }
 
             // apply the weights to the src field
-            ier = mnt_regridedges_apply(&rg, &srcEdgeData[0], &dstEdgeData[0]);
+            ier = mnt_regridedges_apply(&this->rg, &this->srcEdgeData[0], &this->dstEdgeData[0]);
             if (ier != 0) {
-                std::cerr << "ERROR: failed to apply weights to dst field \"" << vname << "\"\n";
+                std::cerr << "ERROR: failed to apply weights to dst field \"" 
+                          << this->variableName << "\"\n";
                 return 13;
             }
 
             // compute loop integrals for each cell
             double avgAbsLoop, minAbsLoop, maxAbsLoop;
-            computeLoopIntegrals(rg->dstGridObj, dstEdgeData, &avgAbsLoop, &minAbsLoop, &maxAbsLoop, loop_integrals);
-            std::cout << "Min/avg/max cell loop integrals: " << minAbsLoop << "/" << avgAbsLoop << "/" << maxAbsLoop << '\n';
+            computeLoopIntegrals(this->rg->dstGridObj, this->dstEdgeData, 
+                                 &avgAbsLoop, &minAbsLoop, &maxAbsLoop, loop_integrals);
+            std::cout << "Min/avg/max cell loop integrals: " << minAbsLoop 
+                      << "/" << avgAbsLoop << "/" << maxAbsLoop << '\n';
 
-            if (vtkOutputFile.size() > 0) {
+            if (this->vtkOutputFile.size() > 0) {
 
                 // new file name for each elevation, time, etc
                 std::string vtkFilename = std::regex_replace(vtkOutputFile, 
@@ -432,24 +531,25 @@ int main(int argc, char** argv) {
                 int dstEdgeSign;
                 for (size_t dstCellId = 0; dstCellId < numDstCells; ++dstCellId) {
                     for (int ie = 0; ie < 4; ++ie) {
-                        ier = mnt_grid_getEdgeId(&rg->dstGridObj, dstCellId, ie, &dstEdgeId, &dstEdgeSign);
+                        ier = mnt_grid_getEdgeId(&this->rg->dstGridObj, dstCellId, ie, &dstEdgeId, &dstEdgeSign);
                         size_t k = dstCellId*NUM_EDGES_PER_CELL + ie;
-                        dstCellByCellData[k] = dstEdgeData[dstEdgeId] * dstEdgeSign;
+                        dstCellByCellData[k] = this->dstEdgeData[dstEdgeId] * dstEdgeSign;
                     }
                 }
 
-                std::cout << "info: writing \"" << vname << "\" to " << vtkFilename << '\n';
-                mnt_grid_dump(&rg->dstGridObj, vtkFilename.c_str());
+                std::cout << "info: writing \"" << this->variableName << "\" to " << vtkFilename << '\n';
+                mnt_grid_dump(&this->rg->dstGridObj, vtkFilename.c_str());
             }
 
             if (dstEdgeDataFile.size() > 0) {
 
                 // write the slice of data to a netcdf file
-                ier = mnt_ncfieldwrite_dataSlice(&writer, &dstIndices[0], &dstCounts[0], &dstEdgeData[0]);
+                ier = mnt_ncfieldwrite_dataSlice(&this->writer, &dstIndices[0], &dstCounts[0], 
+                                                 &this->dstEdgeData[0]);
                 if (ier != 0) {
                     std::cerr << "ERROR: writing slice " << iter << " of data for field " 
-                              << vname << " in file " << dstEdgeDataFile << '\n';
-                    ier = mnt_ncfieldwrite_del(&writer);
+                              << this->variableName << " in file " << dstEdgeDataFile << '\n';
+                    ier = mnt_ncfieldwrite_del(&this->writer);
                     return 18;
                 }
 
@@ -463,12 +563,12 @@ int main(int argc, char** argv) {
         ier = mnt_multiarrayiter_del(&mai);
 
         if (dstEdgeDataFile.size() > 0) {
-            ier = mnt_ncfieldwrite_del(&writer);
+            ier = mnt_ncfieldwrite_del(&this->writer);
         }
 
         // must destroy before closing the file
-        ier = mnt_ncfieldread_del(&reader);
-        ier = mnt_ncattributes_del(&attrs);
+        ier = mnt_ncfieldread_del(&this->reader);
+        ier = mnt_ncattributes_del(&this->attrs);
 
         // done with reading the attributes
         ier = nc_close(srcNcid);
@@ -478,8 +578,49 @@ int main(int argc, char** argv) {
         std::cout << "info: no variable name was provided, thus only computing weights\n";
     }
 
-    // clean up
-    mnt_regridedges_del(&rg);
+    std::cerr << "**** 18\n";
+    std::cerr << "Done with applyWeights\n";
+    return 0;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int main(int argc, char** argv) {
+
+    int ier;
+    bool argParseSucess;
+
+    RegridEdgesApp rea(argc, argv, argParseSucess);
+    if(!argParseSucess) {
+        std::cerr << "ERROR: invalid command line arguments\n";
+        return ier;
+    }
+
+    ier = rea.checkOptions();
+    if(ier != 0) {
+        std::cerr << "ERROR: invalid options\n";
+        return ier;
+    }
+
+    ier = rea.readGrids();
+    if(ier != 0) {
+        std::cerr << "ERROR: failed to load the source or destination grid\n";
+        return ier;
+    }
+
+    ier = rea.computeWeights();
+    if(ier != 0) {
+        std::cerr << "ERROR: when computing or loading weights\n";
+        return ier;
+    }
+
+
+    ier = rea.applyWeights();
+    if(ier != 0) {
+        std::cerr << "ERROR: when applying the weights\n";
+        return ier;
+    }
 
     return 0;
 }
