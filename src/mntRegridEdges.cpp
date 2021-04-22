@@ -465,8 +465,11 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
         return 2;
     }
 
+    vtkUnstructuredGrid* srcUGrid = (*self)->srcGridObj->grid;
+    vtkUnstructuredGrid* dstUGrid = (*self)->dstGridObj->grid;
+
     // build the locator
-    (*self)->srcLoc->SetDataSet((*self)->srcGridObj->grid);
+    (*self)->srcLoc->SetDataSet(srcUGrid);
     (*self)->srcLoc->SetNumberOfCellsPerBucket(numCellsPerBucket);
     (*self)->srcLoc->setPeriodicityLengthX(periodX);
     (*self)->srcLoc->enableFolding();
@@ -477,9 +480,9 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
     vtkIdList* srcCellIds = vtkIdList::New();
     double dstEdgePt0[] = {0., 0., 0.};
     double dstEdgePt1[] = {0., 0., 0.};
-    vtkPoints* dstPoints = (*self)->dstGridObj->grid->GetPoints();
+    vtkPoints* dstPoints = dstUGrid->GetPoints();
 
-    size_t numDstCells = (*self)->dstGridObj->grid->GetNumberOfCells();
+    size_t numDstCells = dstUGrid->GetNumberOfCells();
 
     // reserve some space for the weights and their cell/edge id arrays
     size_t n = numDstCells * (*self)->numEdgesPerCell * 20;
@@ -509,9 +512,9 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
     for (size_t dstCellId = 0; dstCellId < numDstCells; ++dstCellId) {
 
         // get this cell vertex Ids
-        (*self)->dstGridObj->grid->GetCellPoints(dstCellId, dstPtIds);
+        dstUGrid->GetCellPoints(dstCellId, dstPtIds);
 
-        vtkCell* dstCell = (*self)->dstGridObj->grid->GetCell(dstCellId);
+        vtkCell* dstCell = dstUGrid->GetCell(dstCellId);
 
         // iterate over the four edges of each dst cell
         for (int dstEdgeIndex = 0; dstEdgeIndex < (*self)->edgeConnectivity.getNumberOfEdges(); 
@@ -525,7 +528,7 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
             dstPoints->GetPoint(dstCell->GetPointId(id1), dstEdgePt1);
 
             // break the edge into sub-edges
-            PolysegmentIter polySegIter = PolysegmentIter((*self)->srcGridObj->grid, 
+            PolysegmentIter polySegIter = PolysegmentIter(srcUGrid, 
                                                           (*self)->srcLoc,
                                                           dstEdgePt0, dstEdgePt1);
 
@@ -553,7 +556,7 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
                         polySegIter.getIntegratedParamCoord());
                 }
 
-                vtkCell* srcCell = (*self)->srcGridObj->grid->GetCell(srcCellId);
+                vtkCell* srcCell = srcUGrid->GetCell(srcCellId);
                 double* srcCellParamCoords = srcCell->GetParametricCoords();
 
                 for (int srcEdgeIndex = 0; srcEdgeIndex < (*self)->edgeConnectivity.getNumberOfEdges(); 
