@@ -117,6 +117,13 @@ target_link_libraries(testSimpleRegridEdges
                     ${NETCDF_LIBRARIES} ${HDF5_HL_LIBRARIES} ${HDF5_LIBRARIES} ${CURL_LIBRARIES}
 )
 
+add_executable(testFoldRegridEdges testFoldRegridEdges.cxx)
+target_link_libraries(testFoldRegridEdges
+                    mint
+                    ${VTK_LIBRARIES}
+                    ${NETCDF_LIBRARIES} ${HDF5_HL_LIBRARIES} ${HDF5_LIBRARIES} ${CURL_LIBRARIES}
+)
+
 add_executable(testRegridEdgesFromUgrid testRegridEdgesFromUgrid.cxx)
 target_link_libraries(testRegridEdgesFromUgrid
                     mint
@@ -295,6 +302,10 @@ add_test(NAME ugrid2D_xyz COMMAND testUgrid2D
                         "-s" "${CMAKE_SOURCE_DIR}/data/cs_4_xyz.nc:physics"
                         "-vtk" "cs_4_xyz.vtk")
 add_test(NAME simpleRegridEdges COMMAND testSimpleRegridEdges)
+
+add_test(NAME foldRegridEdges COMMAND testFoldRegridEdges)
+set_tests_properties(foldRegridEdges PROPERTIES FAIL_REGULAR_EXPRESSION "Warning")
+
 add_test(NAME regridEdgesFromUgrid COMMAND testRegridEdgesFromUgrid)
 add_test(NAME polylineParser COMMAND testPolylineParser)
 add_test(NAME lineLineIntersector COMMAND testLineLineIntersector)
