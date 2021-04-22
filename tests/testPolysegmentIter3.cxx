@@ -305,8 +305,71 @@ void testFold4() {
 }
 
 
+void testNumCellsPerBucket() {
+    // need to debug this lack of conservation
+    
+    vtkUnstructuredGrid* grid = vtkUnstructuredGrid::New();
+    vtkPoints* points = vtkPoints::New();
+    vtkDoubleArray* coords = vtkDoubleArray::New();
+
+    createUniformGrid(10, 2, grid, points, coords);
+
+    vmtCellLocator* loc = vmtCellLocator::New();
+    loc->SetDataSet(grid);
+    // this test fails with loc->SetNumberOfCellsPerBucket(1);
+    loc->SetNumberOfCellsPerBucket(128);
+    loc->setPeriodicityLengthX(360.);
+    loc->enableFolding();
+    loc->BuildLocator();
+
+    const double p0[] = {   0., -30., 0.};
+    const double p1[] = {  72., -30., 0.};
+    const double p2[] = { 144., -30., 0.};
+    const double p3[] = { 216., -30., 0.};
+    const double p4[] = { 360., -30., 0.};
+    double xPeriod = 360.0;
+
+    std::vector<Vec3> pts{Vec3(p0), Vec3(p1), Vec3(p2), Vec3(p3), Vec3(p4)};
+    assert(pts.size() >= 2);
+
+    printf("testNumCellsPerBucket\n");
+    printf("intrvl    sgmt       cell       ta        tb       xia              xib\n");
+    for (size_t iInterval = 0; iInterval < pts.size() - 1; ++iInterval) {
+
+        Vec3& pa = pts[iInterval + 0];
+        Vec3& pb = pts[iInterval + 1];
+        PolysegmentIter psi(grid, loc, &pa[0], &pb[0], xPeriod);
+
+        size_t numSegs = psi.getNumberOfSegments();
+        psi.reset();
+        for (size_t i = 0; i < numSegs; ++i) {
+            vtkIdType cellId = psi.getCellId();
+            const Vec3& xia = psi.getBegCellParamCoord();
+            const Vec3& xib = psi.getEndCellParamCoord();
+            double ta = psi.getBegLineParamCoord();
+            double tb = psi.getEndLineParamCoord();
+            double coeff = psi.getCoefficient();
+            printf("%4lu     %4lu     %6lld   %.5f   %.5f  %.5f,%.5f  %.5f,%.5f\n", \
+                    iInterval, i, cellId, ta, tb, xia[0], xia[1], xib[0], xib[1]);
+            psi.next();
+        }
+        double tTotal = psi.getIntegratedParamCoord();
+        double error = tTotal - 1.0;
+        std::cout << "testNumCellsPerBucket: total t = " << tTotal <<  " error = " << error << '\n';
+        assert(std::abs(error) < 1.e-10);
+    }
+
+    loc->Delete();
+    grid->Delete();
+    points->Delete();
+    coords->Delete();
+}
+
+
+
 int main(int argc, char** argv) {
 
+	testNumCellsPerBucket();
     testFold4();
     testFold3();
     testFold2();

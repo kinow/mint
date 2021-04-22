@@ -23,14 +23,14 @@ extern "C"
 int mnt_regridedges_new(RegridEdges_t** self) {
     
     *self = new RegridEdges_t();
-    (*self)->srcGrid = NULL;
-    (*self)->dstGrid = NULL;
+    (*self)->srcGridObj = NULL;
+    (*self)->dstGridObj = NULL;
     (*self)->srcLoc = vmtCellLocator::New();
     (*self)->numPointsPerCell = 4; // 2d
     (*self)->numEdgesPerCell = 4;  // 2d
 
-    mnt_grid_new(&((*self)->srcGridObj));
-    mnt_grid_new(&((*self)->dstGridObj));
+    mnt_grid_new(&(*self)->srcGridObj);
+    mnt_grid_new(&(*self)->dstGridObj);
 
     (*self)->ndims = 0;
     // multiarray iterator
@@ -54,8 +54,8 @@ int mnt_regridedges_del(RegridEdges_t** self) {
     (*self)->srcLoc->Delete();
    
     // destroy the source and destination grids
-    mnt_grid_del(&((*self)->srcGridObj));
-    mnt_grid_del(&((*self)->dstGridObj));
+    mnt_grid_del(&(*self)->srcGridObj);
+    mnt_grid_del(&(*self)->dstGridObj);
 
     if ((*self)->srcNcid >= 0) {
         ier = nc_close((*self)->srcNcid);
@@ -438,8 +438,7 @@ int mnt_regridedges_loadSrcGrid(RegridEdges_t** self,
     // Fortran strings don't come with null-termination character. Copy string 
     // into a new one and add '\0'
     std::string filename = std::string(fort_filename, n);
-    int ier = mnt_grid_loadFrom2DUgrid(&((*self)->srcGridObj), filename.c_str());
-    (*self)->srcGrid = (*self)->srcGridObj->grid;
+    int ier = mnt_grid_loadFrom2DUgrid(&(*self)->srcGridObj, filename.c_str());
     return ier;
 }
 
@@ -449,8 +448,7 @@ int mnt_regridedges_loadDstGrid(RegridEdges_t** self,
     // Fortran strings don't come with null-termination character. Copy string 
     // into a new one and add '\0'
     std::string filename = std::string(fort_filename, n);
-    int ier = mnt_grid_loadFrom2DUgrid(&((*self)->dstGridObj), filename.c_str());
-    (*self)->dstGrid = (*self)->dstGridObj->grid;
+    int ier = mnt_grid_loadFrom2DUgrid(&(*self)->dstGridObj, filename.c_str());
     return ier;
 }
 
@@ -458,29 +456,30 @@ extern "C"
 int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double periodX, int debug) {
 
     // checks
-    if (!(*self)->srcGrid) {
+    if (!(*self)->srcGridObj) {
         std::cerr << "mnt_regridedges_build: ERROR must set source grid!\n";
         return 1;
     }
-    if (!(*self)->dstGrid) {
+    if (!(*self)->dstGridObj) {
         std::cerr << "mnt_regridedges_build: ERROR must set destination grid!\n";
         return 2;
     }
 
     // build the locator
-    (*self)->srcLoc->SetDataSet((*self)->srcGrid);
+    (*self)->srcLoc->SetDataSet((*self)->srcGridObj->grid);
     (*self)->srcLoc->SetNumberOfCellsPerBucket(numCellsPerBucket);
-    (*self)->srcLoc->BuildLocator();
     (*self)->srcLoc->setPeriodicityLengthX(periodX);
+    (*self)->srcLoc->enableFolding();
+    (*self)->srcLoc->BuildLocator();
 
     // compute the weights
     vtkIdList* dstPtIds = vtkIdList::New();
     vtkIdList* srcCellIds = vtkIdList::New();
     double dstEdgePt0[] = {0., 0., 0.};
     double dstEdgePt1[] = {0., 0., 0.};
-    vtkPoints* dstPoints = (*self)->dstGrid->GetPoints();
+    vtkPoints* dstPoints = (*self)->dstGridObj->grid->GetPoints();
 
-    size_t numDstCells = (*self)->dstGrid->GetNumberOfCells();
+    size_t numDstCells = (*self)->dstGridObj->grid->GetNumberOfCells();
 
     // reserve some space for the weights and their cell/edge id arrays
     size_t n = numDstCells * (*self)->numEdgesPerCell * 20;
@@ -510,9 +509,9 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
     for (size_t dstCellId = 0; dstCellId < numDstCells; ++dstCellId) {
 
         // get this cell vertex Ids
-        (*self)->dstGrid->GetCellPoints(dstCellId, dstPtIds);
+        (*self)->dstGridObj->grid->GetCellPoints(dstCellId, dstPtIds);
 
-        vtkCell* dstCell = (*self)->dstGrid->GetCell(dstCellId);
+        vtkCell* dstCell = (*self)->dstGridObj->grid->GetCell(dstCellId);
 
         // iterate over the four edges of each dst cell
         for (int dstEdgeIndex = 0; dstEdgeIndex < (*self)->edgeConnectivity.getNumberOfEdges(); 
@@ -526,7 +525,7 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
             dstPoints->GetPoint(dstCell->GetPointId(id1), dstEdgePt1);
 
             // break the edge into sub-edges
-            PolysegmentIter polySegIter = PolysegmentIter((*self)->srcGrid, 
+            PolysegmentIter polySegIter = PolysegmentIter((*self)->srcGridObj->grid, 
                                                           (*self)->srcLoc,
                                                           dstEdgePt0, dstEdgePt1);
 
@@ -554,7 +553,7 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
                         polySegIter.getIntegratedParamCoord());
                 }
 
-                vtkCell* srcCell = (*self)->srcGrid->GetCell(srcCellId);
+                vtkCell* srcCell = (*self)->srcGridObj->grid->GetCell(srcCellId);
                 double* srcCellParamCoords = srcCell->GetParametricCoords();
 
                 for (int srcEdgeIndex = 0; srcEdgeIndex < (*self)->edgeConnectivity.getNumberOfEdges(); 
@@ -629,13 +628,13 @@ int mnt_regridedges_build(RegridEdges_t** self, int numCellsPerBucket, double pe
 
 extern "C"
 int mnt_regridedges_getNumSrcCells(RegridEdges_t** self, size_t* n) {
-    *n = (*self)->srcGrid->GetNumberOfCells();
+    *n = (*self)->srcGridObj->grid->GetNumberOfCells();
     return 0;
 }
 
 extern "C"
 int mnt_regridedges_getNumDstCells(RegridEdges_t** self, size_t* n) {
-    *n = (*self)->dstGrid->GetNumberOfCells();
+    *n = (*self)->dstGridObj->grid->GetNumberOfCells();
     return 0;
 }
 

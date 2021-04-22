@@ -41,7 +41,7 @@ int main() {
     ier = mnt_regridedges_dumpWeights(&rg, outputFilename.c_str(), outputFilename.size());
     assert(ier == 0);
 
-    // edges point in the positive direction
+    // edges' points in the positive direction
     //
     //     3
     //  4--<---3
