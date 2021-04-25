@@ -8,6 +8,7 @@ int mnt_gridmover_new(GridMover_t** self) {
 
     *self = new GridMover_t();
     (*self)->ugrid = NULL;
+    (*self)->loc = vmtCellLocator::New();
     (*self)->velArray = vtkDoubleArray::New();
 
     return 0;
@@ -16,6 +17,7 @@ int mnt_gridmover_new(GridMover_t** self) {
 extern "C"
 int mnt_gridmover_del(GridMover_t** self) {
 
+    (*self)->loc->Delete();
     (*self)->velArray->Delete();
     delete *self;
 
@@ -31,7 +33,7 @@ int mnt_gridmover_setGrid(GridMover_t** self, Grid_t* grid) {
 }
 
 extern "C"
-int mnt_gridmover_build(GridMover_t** self, int numCellsPerBucket, double periodX, int debug) {
+int mnt_gridmover_build(GridMover_t** self, int numCellsPerBucket, double periodX) {
 
     (*self)->loc->SetDataSet((*self)->ugrid);
     (*self)->loc->SetNumberOfCellsPerBucket(numCellsPerBucket);

@@ -19,7 +19,7 @@
  * @param coords vtkDoubleArray object (will be built)
  */
 void createUniformGrid(int nx, int ny, double lonMin, double lonMax, double latMin, double latMax,
-                       double coords[]) {
+                       double coords[], double velocity[]) {
 
     double dx = (lonMax - lonMin) / (double) nx;
     double dy = (latMax - latMin) / (double) ny;
@@ -45,6 +45,11 @@ void createUniformGrid(int nx, int ny, double lonMin, double lonMax, double latM
             coords[k*offset +  3] = x1; coords[k*offset +  4] = y0; coords[k*offset +  5] = 0.0;
             coords[k*offset +  6] = x1; coords[k*offset +  7] = y1; coords[k*offset +  8] = 0.0;
             coords[k*offset +  9] = x0; coords[k*offset + 10] = y1; coords[k*offset + 11] = 0.0;
+
+            velocity[k*offset +  0] = 0.0; velocity[k*offset +  1] = cos(M_PI*x0/180.); velocity[k*offset +  2] = 0.0;
+            velocity[k*offset +  3] = 0.0; velocity[k*offset +  4] = cos(M_PI*x1/180.); velocity[k*offset +  5] = 0.0;
+            velocity[k*offset +  6] = 0.0; velocity[k*offset +  7] = cos(M_PI*x1/180.); velocity[k*offset +  8] = 0.0;
+            velocity[k*offset +  9] = 0.0; velocity[k*offset + 10] = cos(M_PI*x0/180.); velocity[k*offset + 11] = 0.0;
 
             k++;
         }
@@ -74,9 +79,12 @@ int main() {
     assert(ier == 0);
     vtkIdType numCells = nx * ny;
     std::vector<double> coords0(numCells*numVertsPerCell*numDims);
-    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords0[0]);
+    std::vector<double> velocity(numCells*numVertsPerCell*numDims);
+    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords0[0], &velocity[0]);
+
     // copy
     std::vector<double> coords1 = coords0;
+
     ier = mnt_grid_setPointsPtr(&grid0, numVertsPerCell, numCells, &coords0[0]);
     assert(ier == 0);
     ier = mnt_grid_setPointsPtr(&grid1, numVertsPerCell, numCells, &coords1[0]);
@@ -87,11 +95,24 @@ int main() {
     // ier = mnt_grid_setFlags(&dstGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
 
     // move grid1 along the velocity field
-    double dt = 0.1;
     GridMover_t* mover = NULL;
     ier = mnt_gridmover_new(&mover);
     assert(ier == 0);
 
+    ier = mnt_gridmover_setGrid(&mover, grid1);
+    assert(ier == 0);
+
+    int numCellsPerBucket = 128;
+    double periodX = 360.;
+    ier = mnt_gridmover_build(&mover, numCellsPerBucket, periodX);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_setPointVelocityPtr(&mover, numDims, &velocity[0]);
+    assert(ier == 0);
+
+    double deltaTime = 0.1;
+    ier = mnt_gridmover_advance(&mover, deltaTime);
+    assert(ier == 0);
 
     // clean up
     ier = mnt_gridmover_del(&mover);

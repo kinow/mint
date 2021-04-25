@@ -51,11 +51,10 @@ int mnt_gridmover_setGrid(GridMover_t** self, Grid_t* grid);
  * @param self instance of GridMover_t
  * @param numCellsPerBucket average number of cells per bucket
  * @param periodX periodicity length (set to 0 if non-periodic)
- * @param debug 0=no debug info, 1=print debug info, 2=save bad edges in VTK file
  * @return error code (0 is OK)
  */
 extern "C"
-int mnt_gridmover_build(GridMover_t** self, int numCellsPerBucket, double periodX, int debug);
+int mnt_gridmover_build(GridMover_t** self, int numCellsPerBucket, double periodX);
 
 /**
  * Set the pointer to the velocity field
