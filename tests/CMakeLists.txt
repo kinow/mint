@@ -124,6 +124,13 @@ target_link_libraries(testFoldRegridEdges
                     ${NETCDF_LIBRARIES} ${HDF5_HL_LIBRARIES} ${HDF5_LIBRARIES} ${CURL_LIBRARIES}
 )
 
+add_executable(testGridMover testGridMover.cxx)
+target_link_libraries(testGridMover
+                    mint
+                    ${VTK_LIBRARIES}
+                    ${NETCDF_LIBRARIES} ${HDF5_HL_LIBRARIES} ${HDF5_LIBRARIES} ${CURL_LIBRARIES}
+)
+
 add_executable(testRegridEdgesFromUgrid testRegridEdgesFromUgrid.cxx)
 target_link_libraries(testRegridEdgesFromUgrid
                     mint
@@ -305,6 +312,9 @@ add_test(NAME simpleRegridEdges COMMAND testSimpleRegridEdges)
 
 add_test(NAME foldRegridEdges COMMAND testFoldRegridEdges)
 set_tests_properties(foldRegridEdges PROPERTIES FAIL_REGULAR_EXPRESSION "Warning")
+
+add_test(NAME gridMover COMMAND testGridMover)
+set_tests_properties(gridMover PROPERTIES FAIL_REGULAR_EXPRESSION "Warning")
 
 add_test(NAME regridEdgesFromUgrid COMMAND testRegridEdgesFromUgrid)
 add_test(NAME polylineParser COMMAND testPolylineParser)
