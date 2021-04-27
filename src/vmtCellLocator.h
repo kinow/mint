@@ -61,7 +61,7 @@ public:
      * Find cell given a target point
      * @param point target
      * @param tol2 tolerance
-     * @param cell pointer to the cell
+     * @param cell pointer to the cell (not used)
      * @param pcoords parametric coodinates of x in the cell (output)
      * @param weights interpolation weights of the point
      * @return cell Id if found, < 0 otherwise
@@ -69,7 +69,17 @@ public:
     vtkIdType FindCell(const double point[3], double tol2, vtkGenericCell *cell, double pcoords[3], double *weights);
 
     /**
-     * Find all the cells intersected by line
+     * Find cell given a target point taking into account the multiplicity/periodicity of the spherical domain
+     * @param point target
+     * @param tol2 tolerance
+     * @param pcoords parametric coodinates of x in the cell (output)
+     * @param weights interpolation weights of the point
+     * @return cell Id if found, < 0 otherwise
+     */
+    vtkIdType findCellMultiValued(const double point[3], double tol2, double pcoords[3], double *weights);
+
+    /**
+     * Find all the cells intersected by a line
      * @param p0 start point
      * @param p1 end point
      * @param tol2 tolerance
@@ -128,13 +138,13 @@ public:
     bool containsPoint(vtkIdType faceId, const double point[3], double tol) const;
 
     /**
-     * Check if a point is indide a face
+     * Check if a point is inside a face
      * @param faceId face/cell Id
      * @param point point
      * @param tol tolerance
      * @return true if inside, false otherwise
-     * @note this version takes into account the the multiplicity of longitudes and the folding for points beyond 
-     *       +-90 degrees
+     * @note this version takes into account the multiplicity of longitudes and folds points that are 
+     *       beyond +-90 degrees
      */
     bool containsPointMultiValued(vtkIdType faceId, const double point[3], double tol) const;
 

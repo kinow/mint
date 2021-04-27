@@ -110,6 +110,14 @@ int main() {
     ier = mnt_gridmover_setPointVelocityPtr(&mover, numDims, &velocity[0]);
     assert(ier == 0);
 
+    const double targetXyz[] = {12., 13., 0};
+    double vel[3];
+    ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
+    assert(ier == 0);
+
+    std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
+              << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
+
     double deltaTime = 0.1;
     ier = mnt_gridmover_advance(&mover, deltaTime);
     assert(ier == 0);

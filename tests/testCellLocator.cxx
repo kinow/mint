@@ -563,6 +563,73 @@ void testFolding(int nx, int ny) {
 
 }
 
+void testFindCellMultiValued(int nx, int ny) {
+
+    vtkDoubleArray* coords = vtkDoubleArray::New();
+    vtkPoints* points = vtkPoints::New();
+    vtkUnstructuredGrid* grid = vtkUnstructuredGrid::New();
+
+    createUniformGrid(nx, ny, grid, points, coords);
+    std::cout << "testFindCellMultiValued: number of cells: " << grid->GetNumberOfCells() << '\n';
+
+    // create locator
+    vmtCellLocator* cloc = vmtCellLocator::New();
+    cloc->SetDataSet(grid);
+    cloc->BuildLocator();
+    cloc->enableFolding();
+    cloc->setPeriodicityLengthX(360.);
+
+    const double tol = 1.e-12;
+    double pcoords[3];
+    double weights[12];
+    vtkIdType cellId;
+
+    {
+        const double point[] = {180, -90.05, 0};
+        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        assert(cellId >= 0);
+    }
+
+    {
+        const double point[] = {216, -90.04045084972, 0};
+        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        assert(cellId >= 0);
+    }
+
+    {
+        const double point[] = {252, -90.01545084972, 0};
+        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        assert(cellId >= 0);
+    }
+
+    {
+        const double point[] = {288, 90.01545084972, 0};
+        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        assert(cellId >= 0);
+    }
+
+    {
+        const double point[] = {324, 90.04045084972, 0};
+        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        assert(cellId >= 0);
+    }
+
+    {
+        const double point[] = {324, 90.04045084972, 0};
+        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        assert(cellId >= 0);
+    }
+
+
+    {
+        const double point[] = {360, 90.05, 0};
+        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        assert(cellId >= 0);
+    }
+
+
+}
+
 int main(int argc, char** argv) {
 
     testContainsPoint(10, 5);
@@ -577,6 +644,7 @@ int main(int argc, char** argv) {
     testUniformLatLonGrid(10, 5, 50);
     testPeriodic(4, 3);
     testFolding(4, 3);
+    testFindCellMultiValued(10, 5);
 
     return 0;
 }

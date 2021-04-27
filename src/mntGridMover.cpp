@@ -55,14 +55,14 @@ int mnt_gridmover_setPointVelocityPtr(GridMover_t** self, int numComps, double* 
     (*self)->velArray->SetNumberOfComponents(numComps);
     vtkIdType numPoints = (*self)->ugrid->GetNumberOfPoints();
     (*self)->velArray->SetNumberOfTuples(numPoints);
-    int save = 1; // caller should take care of disposing the array
+    int save = 1; // caller should take care of freeing the array
     (*self)->velArray->SetVoidArray(pointVelocity, numPoints, save);
 
     return 0;
 }
 
 extern "C"
-int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double velocity[]) {
+int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double velocity[3]) {
 
     const double tol2 = 1.e-12;
 
@@ -72,7 +72,7 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
     // hex or quad cell
     double weights[12];
 
-    vtkGenericCell* cell;
+    vtkGenericCell* notUsed = NULL;
     Vec3 uvw;
 
     int ier = 0;
@@ -83,14 +83,14 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
     }
 
     // find the cell and interpolation weights
-    vtkIdType cellId = (*self)->loc->FindCell(xyz, tol2, cell, pcoords, weights);
+    vtkIdType cellId = (*self)->loc->findCellMultiValued(xyz, tol2, pcoords, weights);
 
     if (cellId >= 0) {
 
         // found the cell that holds the target point
 
         // get the vertices of the cell
-        vtkIdList* pointIds = cell->GetPointIds();
+        vtkIdList* pointIds = (*self)->ugrid->GetCell(cellId)->GetPointIds();
 
         for (vtkIdType i = 0; i < pointIds->GetNumberOfIds(); ++i) {
 
@@ -104,7 +104,7 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
             (*self)->velArray->GetTuple(pointId, &uvw[0]);
 
             // add the interpolation contribution from that vertex
-            for (int j = 0; j < 3; ++j) {
+            for (size_t j = 0; j < uvw.size(); ++j) {
                 velocity[j] += wght * uvw[j];
             }
         }
@@ -112,6 +112,7 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
     else {
         // point is outside of the domain, zero velocity
         ier = 1;
+        std::cerr << "... point " << Vec3{xyz} << " is outside\n";
     }
 
     return ier;
@@ -127,7 +128,7 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
     // Runge-Kutta coefficients
     Vec3 k1, k2, k3, k4;
 
-    // positions integrated along the trajectory
+    // vertices integrated along the trajectory
     Vec3 xyz0, xyz1, xyz2, xyz3;
 
     const double dtOver6 = deltaTime / 6.;
@@ -138,10 +139,14 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
 
     for (vtkIdType pointId = 0; pointId < numPoints; ++pointId) {
 
+        // get the point's coordinates
+        points->GetPoint(pointId, &xyz0[0]);
+
+        //
         // Runge-Kutta 4th order integration
+        //
 
         // compute k1
-        points->GetPoint(pointId, &xyz0[0]);
         status = mnt_gridmover_interpVelocity(self, &xyz0[0], &k1[0]);
         ier += status;
         
@@ -157,10 +162,10 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
 
         // compute k4
         xyz3 = xyz0 + deltaTime*k3;
-        status = mnt_gridmover_interpVelocity(self, &xyz2[0], &k4[0]);
+        status = mnt_gridmover_interpVelocity(self, &xyz3[0], &k4[0]);
         ier += status;
 
-        // compute and update position
+        // update position
         xyz0 += dtOver6*(k1 + 2.0*k2 + 2.0*k2 + k3);
         points->SetPoint(pointId, &xyz0[0]);
     }

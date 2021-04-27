@@ -10,7 +10,7 @@ inline bool isPointInQuad(const Vec3& targetPoint, std::vector<Vec3>& nodes, dou
 
     bool res = true;
 
-    // nuber of points in the quad
+    // number of points in the quad
     size_t npts = nodes.size();
 
     // iterate over the edges of the quad
@@ -204,6 +204,7 @@ vmtCellLocator::FindCell(const double point[3], double tol, vtkGenericCell *notU
     double closestPoint[3];
     int subId;
     double dist2;
+    notUsed = NULL;
 
     const std::set<vtkIdType>& faces = this->bucket2Faces.find(bucketId)->second;
 
@@ -215,9 +216,52 @@ vmtCellLocator::FindCell(const double point[3], double tol, vtkGenericCell *notU
         }
     }
 
-    // failed to find cell
+    // failed to find the cell
     return -1;
+}
 
+vtkIdType
+vmtCellLocator::findCellMultiValued(const double point[3], double tol, double pcoords[3], double *weights) {
+
+    double closestPoint[3];
+    int subId;
+    double dist2;
+
+    // copy
+    Vec3 targetPoint{point};
+    Vec3 savePoint = targetPoint;
+
+    // add/substract periodicity length and apply folding if need be
+    for (auto kF : this->kFolding) {
+
+        if (kF > 0) {
+            // apply folding
+            this->foldAtPole(&targetPoint[0]);
+        }
+
+        for (const auto& periodX : this->modPeriodX) {
+
+            // add periodicity length
+            targetPoint[0] += periodX;
+
+            int bucketId = this->getBucketId(&targetPoint[0]);
+            const std::set<vtkIdType>& faces = this->bucket2Faces.find(bucketId)->second;
+
+            for (const vtkIdType& cId : faces) {
+                if (this->containsPoint(cId, &targetPoint[0], tol)) {
+                    vtkCell* quad = this->grid->GetCell(cId);
+                    quad->EvaluatePosition(&targetPoint[0], closestPoint, subId, pcoords, dist2, weights);
+                    return cId;
+                }
+            }
+
+            // back to the original values
+            targetPoint = savePoint;
+        }
+    }
+
+    // failed to find the cell
+    return -1;
 }
 
 
@@ -324,7 +368,6 @@ vmtCellLocator::findIntersectionsWithLine(const Vec3& pBeg, const Vec3& pEnd) {
         double distSq = dot(direction, direction);
         if (distSq < eps) {
             // zero length, skip
-            std::cout << "... zero distance: distSq = " << distSq << '\n';
             continue;
         }
 
