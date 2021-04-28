@@ -37,9 +37,9 @@ int mnt_gridmover_build(GridMover_t** self, int numCellsPerBucket, double period
 
     (*self)->loc->SetDataSet((*self)->ugrid);
     (*self)->loc->SetNumberOfCellsPerBucket(numCellsPerBucket);
-    (*self)->loc->setPeriodicityLengthX(periodX);
-    (*self)->loc->enableFolding();
     (*self)->loc->BuildLocator();
+    (*self)->loc->enableFolding();
+    (*self)->loc->setPeriodicityLengthX(periodX);
 
     return 0;
 }
@@ -72,17 +72,18 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
     // hex or quad cell
     double weights[12];
 
-    vtkGenericCell* notUsed = NULL;
+    // velocity at the cell vertices
     Vec3 uvw;
 
     int ier = 0;
 
-    // initialize to zero. This will be the value if the target falls outside the domain
+    // initialize the interpolated velocityto zero. This will be the 
+    // value if the target falls outside the domain
     for (int j = 0; j < 3; ++j) {
         velocity[j] = 0;
     }
 
-    // find the cell and interpolation weights
+    // find the cell and the interpolation weights
     vtkIdType cellId = (*self)->loc->findCellMultiValued(xyz, tol2, pcoords, weights);
 
     if (cellId >= 0) {
@@ -112,7 +113,8 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
     else {
         // point is outside of the domain, zero velocity
         ier = 1;
-        std::cerr << "... point " << Vec3{xyz} << " is outside\n";
+        std::cerr.precision(16);
+        std::cerr << "... point " << Vec3{xyz} << " is outside\n" << std::scientific;
     }
 
     return ier;

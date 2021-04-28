@@ -575,6 +575,7 @@ void testFindCellMultiValued(int nx, int ny) {
     // create locator
     vmtCellLocator* cloc = vmtCellLocator::New();
     cloc->SetDataSet(grid);
+    cloc->SetNumberOfCellsPerBucket(128);
     cloc->BuildLocator();
     cloc->enableFolding();
     cloc->setPeriodicityLengthX(360.);
@@ -585,49 +586,52 @@ void testFindCellMultiValued(int nx, int ny) {
     vtkIdType cellId;
 
     {
-        const double point[] = {180, -90.05, 0};
+        const double point[] = {1.8000000000000e+02, -9.0050000000000e+01, 0.0000000000000e+00};
         cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        std::cerr << "testFindCellMultiValued: point = " << Vec3{point} << " cellId = " << cellId << '\n';
         assert(cellId >= 0);
     }
 
     {
-        const double point[] = {216, -90.04045084972, 0};
+        const double point[] = {2.1600000000000e+02, -9.0040450849719e+01, 0.0000000000000e+00};
         cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        std::cerr << "testFindCellMultiValued: point = " << Vec3{point} << " cellId = " << cellId << '\n';
         assert(cellId >= 0);
     }
 
     {
-        const double point[] = {252, -90.01545084972, 0};
+        const double point[] = {2.5200000000000e+02, -9.0015450849719e+01, 0.0000000000000e+00};
         cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        std::cerr << "testFindCellMultiValued: point = " << Vec3{point} << " cellId = " << cellId << '\n';
         assert(cellId >= 0);
     }
 
     {
-        const double point[] = {288, 90.01545084972, 0};
+        const double point[] = {2.8800000000000e+02, 9.0015450849719e+01, 0.0000000000000e+00};
         cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        std::cerr << "testFindCellMultiValued: point = " << Vec3{point} << " cellId = " << cellId << '\n';
         assert(cellId >= 0);
     }
 
     {
-        const double point[] = {324, 90.04045084972, 0};
+        const double point[] = {3.2400000000000e+02, 9.0040450849719e+01, 0.0000000000000e+00};
         cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        std::cerr << "testFindCellMultiValued: point = " << Vec3{point} << " cellId = " << cellId << '\n';
         assert(cellId >= 0);
     }
 
     {
-        const double point[] = {324, 90.04045084972, 0};
+        const double point[] = {3.6000000000000e+02, 9.0050000000000e+01, 0.0000000000000e+00};
         cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
+        std::cerr << "testFindCellMultiValued: point = " << Vec3{point} << " cellId = " << cellId << '\n';
         assert(cellId >= 0);
     }
 
-
-    {
-        const double point[] = {360, 90.05, 0};
-        cellId = cloc->findCellMultiValued(point, tol, pcoords, weights);
-        assert(cellId >= 0);
-    }
-
-
+    // clean up
+    cloc->Delete();
+    grid->Delete();
+    points->Delete();
+    coords->Delete();
 }
 
 int main(int argc, char** argv) {

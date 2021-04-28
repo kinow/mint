@@ -217,6 +217,7 @@ vmtCellLocator::FindCell(const double point[3], double tol, vtkGenericCell *notU
     }
 
     // failed to find the cell
+    std::cerr << "&&& failed to find a cell for point " << Vec3{point} << "\n";
     return -1;
 }
 
