@@ -128,7 +128,7 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
     int status;
 
     // Runge-Kutta coefficients
-    Vec3 k1, k2, k3, k4;
+    Vec3 k1(0.), k2(0.), k3(0.), k4(0.);
 
     // vertices integrated along the trajectory
     Vec3 xyz0, xyz1, xyz2, xyz3;
@@ -157,15 +157,15 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
         status = mnt_gridmover_interpVelocity(self, &xyz1[0], &k2[0]);
         ier += status;
 
-        // compute k3
-        xyz2 = xyz0 + dtOver2*k2;
-        status = mnt_gridmover_interpVelocity(self, &xyz2[0], &k3[0]);
-        ier += status;
+        // // compute k3
+        // xyz2 = xyz0 + dtOver2*k2;
+        // status = mnt_gridmover_interpVelocity(self, &xyz2[0], &k3[0]);
+        // ier += status;
 
-        // compute k4
-        xyz3 = xyz0 + deltaTime*k3;
-        status = mnt_gridmover_interpVelocity(self, &xyz3[0], &k4[0]);
-        ier += status;
+        // // compute k4
+        // xyz3 = xyz0 + deltaTime*k3;
+        // status = mnt_gridmover_interpVelocity(self, &xyz3[0], &k4[0]);
+        // ier += status;
 
         // update position
         xyz0 += dtOver6*(k1 + 2.0*k2 + 2.0*k2 + k3);

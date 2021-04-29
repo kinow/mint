@@ -188,8 +188,11 @@ private:
      * @param point lon, lat in input and transformed lon, lat on output
      */
     inline void foldAtPole(double point[]) const {
+        // positive >= 180, negative < 180
         double sgnLambda = point[0] >= this->lambdaMid? 1.: -1.;
+        // positive in north hemisphere, negative in south hemisphere
         double sgnTheta = point[1] >= 0? 1.: -1.;
+        
         point[0] -= sgnLambda*180.;
         point[1] = sgnTheta*180 - point[1];
     }

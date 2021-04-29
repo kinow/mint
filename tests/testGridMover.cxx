@@ -67,8 +67,8 @@ void testInterpVelocity(int nx, int ny) {
     int ier;
 
     Grid_t* grid = NULL;
-
     ier = mnt_grid_new(&grid);
+
     assert(ier == 0);
     vtkIdType numCells = nx * ny;
     std::vector<double> coords(numCells*numVertsPerCell*numDims);
@@ -148,12 +148,66 @@ void testInterpVelocity(int nx, int ny) {
     }
 
     // clean up
+    ier = mnt_grid_del(&grid);
     ier = mnt_gridmover_del(&mover);
     assert(ier == 0);
 
 }
 
-void testRectilinearGrid(int nx, int ny) {
+void testAdvance(int nx, int ny) {
+
+    const int fixLonAcrossDateline = 0;
+    const int averageLonAtPole = 0;
+    const int degrees = 1;
+    const int numVertsPerCell = 4;
+    const int numDims = 3;
+
+    int ier;
+
+    Grid_t* grid = NULL;
+    ier = mnt_grid_new(&grid);
+    
+    assert(ier == 0);
+    vtkIdType numCells = nx * ny;
+    std::vector<double> coords(numCells*numVertsPerCell*numDims);
+    std::vector<double> velocity(numCells*numVertsPerCell*numDims);
+    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords[0], &velocity[0]);
+
+    ier = mnt_grid_setPointsPtr(&grid, numVertsPerCell, numCells, &coords[0]);
+    assert(ier == 0);
+
+    // flags for lon-lat grid
+    // ier = mnt_grid_setFlags(&srcGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
+    // ier = mnt_grid_setFlags(&dstGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
+
+    // move grid1 along the velocity field
+    GridMover_t* mover = NULL;
+    ier = mnt_gridmover_new(&mover);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_setGrid(&mover, grid);
+    assert(ier == 0);
+
+    int numCellsPerBucket = 128;
+    double periodX = 360.;
+    ier = mnt_gridmover_build(&mover, numCellsPerBucket, periodX);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_setPointVelocityPtr(&mover, numDims, &velocity[0]);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_advance(&mover, 0.1);
+    assert(ier == 0);
+
+    // clean up
+    ier = mnt_grid_del(&grid);
+    ier = mnt_gridmover_del(&mover);
+    assert(ier == 0);
+
+}
+
+
+void testRectilinearGrid2(int nx, int ny) {
 
     const int fixLonAcrossDateline = 0;
     const int averageLonAtPole = 0;
@@ -216,6 +270,10 @@ void testRectilinearGrid(int nx, int ny) {
     assert(ier == 0);
 
     // clean up
+    ier = mnt_grid_del(&grid0);
+    assert(ier == 0);
+    ier = mnt_grid_del(&grid1);
+    assert(ier == 0);
     ier = mnt_gridmover_del(&mover);
     assert(ier == 0);
 
@@ -224,9 +282,7 @@ void testRectilinearGrid(int nx, int ny) {
 
 int main() {
 
-    int nx = 10;
-    int ny = 5;
-
-    testInterpVelocity(nx, ny);
-    testRectilinearGrid(nx, ny);
+    //testInterpVelocity(10, 5);
+    testAdvance(4, 2);
+    //testRectilinearGrid2(10, 5);
 }
