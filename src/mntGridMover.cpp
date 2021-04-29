@@ -113,8 +113,6 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
     else {
         // point is outside of the domain, zero velocity
         ier = 1;
-        std::cerr.precision(16);
-        std::cerr << "... point " << Vec3{xyz} << " is outside\n" << std::scientific;
     }
 
     return ier;
@@ -171,14 +169,14 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
         ier += status;
 
         // new positions
-        newPoints[pointId + 0] = xyz0[0] + dtOver6*(k1[0] + 2.0*k2[0] + 2.0*k2[0] + k3[0]);
-        newPoints[pointId + 1] = xyz0[1] + dtOver6*(k1[1] + 2.0*k2[1] + 2.0*k2[1] + k3[1]);
-        newPoints[pointId + 2] = xyz0[2] + dtOver6*(k1[2] + 2.0*k2[2] + 2.0*k2[2] + k3[2]);
+        newPoints[3*pointId + 0] = xyz0[0] + dtOver6*(k1[0] + 2.0*k2[0] + 2.0*k2[0] + k3[0]);
+        newPoints[3*pointId + 1] = xyz0[1] + dtOver6*(k1[1] + 2.0*k2[1] + 2.0*k2[1] + k3[1]);
+        newPoints[3*pointId + 2] = xyz0[2] + dtOver6*(k1[2] + 2.0*k2[2] + 2.0*k2[2] + k3[2]);
     }
 
     // update the positions
     for (vtkIdType pointId = 0; pointId < numPoints; ++pointId) {
-        points->SetPoint(pointId, &newPoints[pointId]);
+        points->SetPoint(pointId, &newPoints[3*pointId]);
     }
 
     return ier;

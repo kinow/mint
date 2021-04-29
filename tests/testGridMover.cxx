@@ -1,4 +1,5 @@
 #include "mntGridMover.h"
+#include "mntDots.h"
 #include <vtkDoubleArray.h>
 #include <vtkPoints.h>
 #include <vtkUnstructuredGrid.h>
@@ -9,7 +10,7 @@
 #include <cassert>
 
 /**
- * Create uniform VTK grid objects
+ * Create uniform VTK grid objects with a velocity field attached
  * @param nx number of x cells
  * @param ny number of y cells
  * @param lonMin low corner longitude
@@ -17,8 +18,10 @@
  * @param latMin low corner latitude
  * @param latMax high corner latitude
  * @param coords vtkDoubleArray object (will be built)
+ * @param velocity vtkDoubleArray object (will be built)
  */
-void createUniformGrid(int nx, int ny, double lonMin, double lonMax, double latMin, double latMax,
+void createUniformGridWithVelocity(int nx, int ny, 
+                       double lonMin, double lonMax, double latMin, double latMax,
                        double coords[], double velocity[]) {
 
     double dx = (lonMax - lonMin) / (double) nx;
@@ -46,6 +49,7 @@ void createUniformGrid(int nx, int ny, double lonMin, double lonMax, double latM
             coords[k*offset +  6] = x1; coords[k*offset +  7] = y1; coords[k*offset +  8] = 0.0;
             coords[k*offset +  9] = x0; coords[k*offset + 10] = y1; coords[k*offset + 11] = 0.0;
 
+            // velocity field
             velocity[k*offset +  0] = 0.0; velocity[k*offset +  1] = cos(M_PI*x0/180.); velocity[k*offset +  2] = 0.0;
             velocity[k*offset +  3] = 0.0; velocity[k*offset +  4] = cos(M_PI*x1/180.); velocity[k*offset +  5] = 0.0;
             velocity[k*offset +  6] = 0.0; velocity[k*offset +  7] = cos(M_PI*x1/180.); velocity[k*offset +  8] = 0.0;
@@ -54,6 +58,45 @@ void createUniformGrid(int nx, int ny, double lonMin, double lonMax, double latM
             k++;
         }
     }
+}
+
+/** 
+ * Compute the standard deviation distance between two grids
+ * @param grid0 first grid
+ * @param grid1 second grid
+ * @return standard deviation
+ */
+double computeStandardDeviation(Grid_t* grid0, Grid_t* grid1) {
+
+    int ier;
+    double res = 0;
+    Vec3 xyz0, xyz1;
+
+    vtkUnstructuredGrid* ugrid0 = NULL;
+    vtkUnstructuredGrid* ugrid1 = NULL;
+
+    ier = mnt_grid_get(&grid0, &ugrid0);
+    assert(ier == 0);
+    ier = mnt_grid_get(&grid1, &ugrid1);
+    assert(ier == 0);
+
+    vtkPoints* points0 = ugrid0->GetPoints();
+    vtkPoints* points1 = ugrid1->GetPoints();
+
+    vtkIdType numPoints = points0->GetNumberOfPoints();
+    for (vtkIdType pointId = 0; pointId < numPoints; ++pointId) {
+
+        points0->GetPoint(pointId, &xyz0[0]);
+        points1->GetPoint(pointId, &xyz1[0]);
+
+        Vec3 diff = xyz1 - xyz0;
+        res += dot(diff, diff);
+    }
+    res /= (double) numPoints;
+    res = sqrt(res);
+
+
+    return res;
 }
 
 void testInterpVelocity(int nx, int ny) {
@@ -73,7 +116,7 @@ void testInterpVelocity(int nx, int ny) {
     vtkIdType numCells = nx * ny;
     std::vector<double> coords(numCells*numVertsPerCell*numDims);
     std::vector<double> velocity(numCells*numVertsPerCell*numDims);
-    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords[0], &velocity[0]);
+    createUniformGridWithVelocity(nx, ny, 0., 360., -90., 90., &coords[0], &velocity[0]);
 
     ier = mnt_grid_setPointsPtr(&grid, numVertsPerCell, numCells, &coords[0]);
     assert(ier == 0);
@@ -156,11 +199,12 @@ void testInterpVelocity(int nx, int ny) {
 
 void testAdvance(int nx, int ny) {
 
+    const int numVertsPerCell = 4;
+    const int numDims = 3;
+
     const int fixLonAcrossDateline = 0;
     const int averageLonAtPole = 0;
     const int degrees = 1;
-    const int numVertsPerCell = 4;
-    const int numDims = 3;
 
     int ier;
 
@@ -171,7 +215,7 @@ void testAdvance(int nx, int ny) {
     vtkIdType numCells = nx * ny;
     std::vector<double> coords(numCells*numVertsPerCell*numDims);
     std::vector<double> velocity(numCells*numVertsPerCell*numDims);
-    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords[0], &velocity[0]);
+    createUniformGridWithVelocity(nx, ny, 0., 360., -90., 90., &coords[0], &velocity[0]);
 
     ier = mnt_grid_setPointsPtr(&grid, numVertsPerCell, numCells, &coords[0]);
     assert(ier == 0);
@@ -227,7 +271,7 @@ void testRectilinearGrid2(int nx, int ny) {
     vtkIdType numCells = nx * ny;
     std::vector<double> coords0(numCells*numVertsPerCell*numDims);
     std::vector<double> velocity(numCells*numVertsPerCell*numDims);
-    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords0[0], &velocity[0]);
+    createUniformGridWithVelocity(nx, ny, 0., 360., -90., 90., &coords0[0], &velocity[0]);
 
     // copy
     std::vector<double> coords1 = coords0;
@@ -257,17 +301,22 @@ void testRectilinearGrid2(int nx, int ny) {
     ier = mnt_gridmover_setPointVelocityPtr(&mover, numDims, &velocity[0]);
     assert(ier == 0);
 
-    const double targetXyz[] = {12., 13., 0};
-    double vel[3];
-    ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
-    assert(ier == 0);
-
-    std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
-              << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
-
-    double deltaTime = 0.1;
+    double deltaTime = 10.0;
     ier = mnt_gridmover_advance(&mover, deltaTime);
     assert(ier == 0);
+
+    // // go back
+    // ier = mnt_gridmover_advance(&mover, -deltaTime);
+    // assert(ier == 0);
+
+    // save grid0 and grid1
+    ier = mnt_grid_dump(&grid0, "testGridMover_grid0.vtk");
+    assert(ier == 0);
+    ier = mnt_grid_dump(&grid1, "testGridMover_grid1.vtk");
+    assert(ier == 0);
+
+    double diffGrids = computeStandardDeviation(grid0, grid1);
+    std::cout << "diff between grids: " << diffGrids << '\n';
 
     // clean up
     ier = mnt_grid_del(&grid0);
@@ -284,5 +333,5 @@ int main() {
 
     testInterpVelocity(10, 5);
     testAdvance(10, 5);
-    testRectilinearGrid2(10, 5);
+    testRectilinearGrid2(100, 50);
 }
