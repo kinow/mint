@@ -282,7 +282,7 @@ void testRectilinearGrid2(int nx, int ny) {
 
 int main() {
 
-    //testInterpVelocity(10, 5);
-    testAdvance(4, 2);
-    //testRectilinearGrid2(10, 5);
+    testInterpVelocity(10, 5);
+    testAdvance(10, 5);
+    testRectilinearGrid2(10, 5);
 }
