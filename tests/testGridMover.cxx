@@ -56,11 +56,104 @@ void createUniformGrid(int nx, int ny, double lonMin, double lonMax, double latM
     }
 }
 
+void testInterpVelocity(int nx, int ny) {
 
-int main() {
+    const int fixLonAcrossDateline = 0;
+    const int averageLonAtPole = 0;
+    const int degrees = 1;
+    const int numVertsPerCell = 4;
+    const int numDims = 3;
 
-    int nx = 10;
-    int ny = 5;
+    int ier;
+
+    Grid_t* grid = NULL;
+
+    ier = mnt_grid_new(&grid);
+    assert(ier == 0);
+    vtkIdType numCells = nx * ny;
+    std::vector<double> coords(numCells*numVertsPerCell*numDims);
+    std::vector<double> velocity(numCells*numVertsPerCell*numDims);
+    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords[0], &velocity[0]);
+
+    ier = mnt_grid_setPointsPtr(&grid, numVertsPerCell, numCells, &coords[0]);
+    assert(ier == 0);
+
+    // flags for lon-lat grid
+    // ier = mnt_grid_setFlags(&srcGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
+    // ier = mnt_grid_setFlags(&dstGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
+
+    // move grid1 along the velocity field
+    GridMover_t* mover = NULL;
+    ier = mnt_gridmover_new(&mover);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_setGrid(&mover, grid);
+    assert(ier == 0);
+
+    int numCellsPerBucket = 128;
+    double periodX = 360.;
+    ier = mnt_gridmover_build(&mover, numCellsPerBucket, periodX);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_setPointVelocityPtr(&mover, numDims, &velocity[0]);
+    assert(ier == 0);
+
+    {
+        const double targetXyz[] = {180., -90.05, 0.};
+        double vel[3];
+        ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
+        assert(ier == 0);
+        std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
+                  << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
+    }
+    {
+        const double targetXyz[] = {2.1600000000000e+02, -9.0040450849719e+01, 0.0000000000000e+00};
+        double vel[3];
+        ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
+        assert(ier == 0);
+        std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
+                  << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
+    }
+    {
+        const double targetXyz[] = {2.5200000000000e+02, -9.0015450849719e+01, 0.0000000000000e+00};
+        double vel[3];
+        ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
+        assert(ier == 0);
+        std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
+                  << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
+    }
+    {
+        const double targetXyz[] = {2.8800000000000e+02, 9.0015450849719e+01, 0.0000000000000e+00};
+        double vel[3];
+        ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
+        assert(ier == 0);
+        std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
+                  << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
+    }
+    {
+        const double targetXyz[] = {3.2400000000000e+02, 9.0040450849719e+01, 0.0000000000000e+00};
+        double vel[3];
+        ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
+        assert(ier == 0);
+        std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
+                  << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
+    }
+    {
+        const double targetXyz[] = {3.6000000000000e+02, 9.0050000000000e+01, 0.0000000000000e+00};
+        double vel[3];
+        ier = mnt_gridmover_interpVelocity(&mover, targetXyz, vel);
+        assert(ier == 0);
+        std::cout << "at point " << targetXyz[0] << ',' << targetXyz[1] 
+                  << " the velocity is " << vel[0] << ',' << vel[1] << '\n';
+    }
+
+    // clean up
+    ier = mnt_gridmover_del(&mover);
+    assert(ier == 0);
+
+}
+
+void testRectilinearGrid(int nx, int ny) {
 
     const int fixLonAcrossDateline = 0;
     const int averageLonAtPole = 0;
@@ -126,4 +219,14 @@ int main() {
     ier = mnt_gridmover_del(&mover);
     assert(ier == 0);
 
+}
+
+
+int main() {
+
+    int nx = 10;
+    int ny = 5;
+
+    testInterpVelocity(nx, ny);
+    testRectilinearGrid(nx, ny);
 }
