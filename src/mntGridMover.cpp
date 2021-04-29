@@ -139,6 +139,9 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
     vtkPoints* points = (*self)->ugrid->GetPoints();
     vtkIdType numPoints = points->GetNumberOfPoints();
 
+    // store the new poisitions (3D)
+    std::vector<double> newPoints(numPoints*3);
+
     for (vtkIdType pointId = 0; pointId < numPoints; ++pointId) {
 
         // get the point's coordinates
@@ -157,19 +160,25 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
         status = mnt_gridmover_interpVelocity(self, &xyz1[0], &k2[0]);
         ier += status;
 
-        // // compute k3
-        // xyz2 = xyz0 + dtOver2*k2;
-        // status = mnt_gridmover_interpVelocity(self, &xyz2[0], &k3[0]);
-        // ier += status;
+        // compute k3
+        xyz2 = xyz0 + dtOver2*k2;
+        status = mnt_gridmover_interpVelocity(self, &xyz2[0], &k3[0]);
+        ier += status;
 
-        // // compute k4
-        // xyz3 = xyz0 + deltaTime*k3;
-        // status = mnt_gridmover_interpVelocity(self, &xyz3[0], &k4[0]);
-        // ier += status;
+        // compute k4
+        xyz3 = xyz0 + deltaTime*k3;
+        status = mnt_gridmover_interpVelocity(self, &xyz3[0], &k4[0]);
+        ier += status;
 
-        // update position
-        xyz0 += dtOver6*(k1 + 2.0*k2 + 2.0*k2 + k3);
-        points->SetPoint(pointId, &xyz0[0]);
+        // new positions
+        newPoints[pointId + 0] = xyz0[0] + dtOver6*(k1[0] + 2.0*k2[0] + 2.0*k2[0] + k3[0]);
+        newPoints[pointId + 1] = xyz0[1] + dtOver6*(k1[1] + 2.0*k2[1] + 2.0*k2[1] + k3[1]);
+        newPoints[pointId + 2] = xyz0[2] + dtOver6*(k1[2] + 2.0*k2[2] + 2.0*k2[2] + k3[2]);
+    }
+
+    // update the positions
+    for (vtkIdType pointId = 0; pointId < numPoints; ++pointId) {
+        points->SetPoint(pointId, &newPoints[pointId]);
     }
 
     return ier;

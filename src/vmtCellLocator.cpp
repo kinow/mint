@@ -8,6 +8,7 @@
 
 inline bool isPointInQuad(const Vec3& targetPoint, std::vector<Vec3>& nodes, double tol) {
 
+
     bool res = true;
 
     // number of points in the quad
@@ -230,7 +231,6 @@ vmtCellLocator::findCellMultiValued(const double point[3], double tol, double pc
 
     // copy
     Vec3 targetPoint{point};
-    // Vec3 savePoint = targetPoint;
 
     // add/substract periodicity length and apply folding if need be
     for (auto kF : this->kFolding) {
@@ -249,11 +249,9 @@ vmtCellLocator::findCellMultiValued(const double point[3], double tol, double pc
             const std::set<vtkIdType>& faces = this->bucket2Faces.find(bucketId)->second;
 
             for (const vtkIdType& cId : faces) {
-                //std::cerr << "???? targetPoint = " << targetPoint << " cId = " << cId << " bucketId = " << bucketId << '\n';
                 if (this->containsPoint(cId, &targetPoint[0], tol)) {
                     vtkCell* quad = this->grid->GetCell(cId);
                     quad->EvaluatePosition(&targetPoint[0], closestPoint, subId, pcoords, dist2, weights);
-                    //std::cerr << ">>>>>>> found cId = " << cId << '\n';
                     return cId;
                 }
             }
