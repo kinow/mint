@@ -168,10 +168,12 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
         status = mnt_gridmover_interpVelocity(self, &xyz3[0], &k4[0]);
         ier += status;
 
+        // std::cerr << "pointId = " << pointId << " xyz0 = " << xyz0 << " k1=" << k1 << " k2=" << k2 << " k3=" << k3 << " k4=" << k4 << '\n';
+
         // new positions
-        newPoints[3*pointId + 0] = xyz0[0] + dtOver6*(k1[0] + 2.0*k2[0] + 2.0*k2[0] + k3[0]);
-        newPoints[3*pointId + 1] = xyz0[1] + dtOver6*(k1[1] + 2.0*k2[1] + 2.0*k2[1] + k3[1]);
-        newPoints[3*pointId + 2] = xyz0[2] + dtOver6*(k1[2] + 2.0*k2[2] + 2.0*k2[2] + k3[2]);
+        newPoints[3*pointId + 0] = xyz0[0] + dtOver6*(k1[0] + 2.0*k2[0] + 2.0*k3[0] + k4[0]);
+        newPoints[3*pointId + 1] = xyz0[1] + dtOver6*(k1[1] + 2.0*k2[1] + 2.0*k3[1] + k4[1]);
+        newPoints[3*pointId + 2] = xyz0[2] + dtOver6*(k1[2] + 2.0*k2[2] + 2.0*k3[2] + k4[2]);
     }
 
     // update the positions
