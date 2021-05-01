@@ -301,7 +301,7 @@ void testRectilinearGrid2(int nx, int ny) {
     ier = mnt_gridmover_setPointVelocityPtr(&mover, numDims, &velocity[0]);
     assert(ier == 0);
 
-    double deltaTime = 10.0;
+    double deltaTime = 50.0;
     ier = mnt_gridmover_advance(&mover, deltaTime);
     assert(ier == 0);
 
@@ -333,5 +333,5 @@ int main() {
 
     testInterpVelocity(10, 5);
     testAdvance(10, 5);
-    testRectilinearGrid2(100, 50);
+    testRectilinearGrid2(10, 5);
 }
