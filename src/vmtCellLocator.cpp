@@ -8,6 +8,7 @@
 
 inline bool isPointInQuad(const Vec3& targetPoint, std::vector<Vec3>& nodes, double tol) {
 
+
     bool res = true;
 
     // number of points in the quad
@@ -229,7 +230,6 @@ vmtCellLocator::findCellMultiValued(const double point[3], double tol, double pc
 
     // copy
     Vec3 targetPoint{point};
-    Vec3 savePoint = targetPoint;
 
     // add/substract periodicity length and apply folding if need be
     for (auto kF : this->kFolding) {
@@ -256,10 +256,12 @@ vmtCellLocator::findCellMultiValued(const double point[3], double tol, double pc
                     return cId;
                 }
             }
-        }
+            // back to the original values
+            targetPoint[0] -= periodX;
 
+        }
         // back to the original values
-        targetPoint = savePoint;
+        //targetPoint = savePoint;
     }
 
     // failed to find the cell
