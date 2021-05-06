@@ -580,6 +580,8 @@ void testFindCellMultiValued(int nx, int ny) {
     cloc->enableFolding();
     cloc->setPeriodicityLengthX(360.);
 
+    cloc->printBuckets();
+
     const double tol = 1.e-12;
     double pcoords[3];
     double weights[12];

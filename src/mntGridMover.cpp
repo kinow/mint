@@ -41,6 +41,8 @@ int mnt_gridmover_build(GridMover_t** self, int numCellsPerBucket, double period
     (*self)->loc->enableFolding();
     (*self)->loc->setPeriodicityLengthX(periodX);
 
+    (*self)->loc->printBuckets();
+
     return 0;
 }
 
@@ -48,7 +50,7 @@ extern "C"
 int mnt_gridmover_setPointVelocityPtr(GridMover_t** self, int numComps, double* pointVelocity) {
 
     if (!(*self)->ugrid) {
-        std::cerr << "ERROR: setGrid before calling setPointVelocityPtr\n";
+    	// no grid
         return 1;
     }
 
@@ -77,7 +79,7 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
 
     int ier = 0;
 
-    // initialize the interpolated velocityto zero. This will be the 
+    // initialize the interpolated velocity to zero. This will be the 
     // value if the target falls outside the domain
     for (int j = 0; j < 3; ++j) {
         velocity[j] = 0;
@@ -113,8 +115,6 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
     else {
         // point is outside of the domain, zero velocity
         ier = 1;
-        std::cerr.precision(16);
-        std::cerr << "... point " << Vec3{xyz} << " is outside\n" << std::scientific;
     }
 
     return ier;
@@ -123,12 +123,21 @@ int mnt_gridmover_interpVelocity(GridMover_t** self, const double xyz[], double 
 extern "C"
 int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
 
+    // DEBUG
+    {
+        double point[] = {180, -90.05, 0};
+        double pcoords[3];
+        double weights[12];
+        vtkIdType cellId = (*self)->loc->findCellMultiValued(point, 1.e-12, pcoords, weights);
+    }
+
+
     // error codes
     int ier = 0;
     int status;
 
     // Runge-Kutta coefficients
-    Vec3 k1, k2, k3, k4;
+    Vec3 k1(0.), k2(0.), k3(0.), k4(0.);
 
     // vertices integrated along the trajectory
     Vec3 xyz0, xyz1, xyz2, xyz3;
@@ -150,12 +159,12 @@ int mnt_gridmover_advance(GridMover_t** self, double deltaTime) {
 
         // compute k1
         status = mnt_gridmover_interpVelocity(self, &xyz0[0], &k1[0]);
-        ier += status;
         
         // compute k2
         xyz1 = xyz0 + dtOver2*k1;
+
         status = mnt_gridmover_interpVelocity(self, &xyz1[0], &k2[0]);
-        ier += status;
+        ier += status; 
 
         // compute k3
         xyz2 = xyz0 + dtOver2*k2;

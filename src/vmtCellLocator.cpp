@@ -217,7 +217,6 @@ vmtCellLocator::FindCell(const double point[3], double tol, vtkGenericCell *notU
     }
 
     // failed to find the cell
-    std::cerr << "&&& failed to find a cell for point " << Vec3{point} << "\n";
     return -1;
 }
 
@@ -249,16 +248,18 @@ vmtCellLocator::findCellMultiValued(const double point[3], double tol, double pc
             const std::set<vtkIdType>& faces = this->bucket2Faces.find(bucketId)->second;
 
             for (const vtkIdType& cId : faces) {
+
                 if (this->containsPoint(cId, &targetPoint[0], tol)) {
                     vtkCell* quad = this->grid->GetCell(cId);
+                    // compute the parametric coords and the interpolation weights
                     quad->EvaluatePosition(&targetPoint[0], closestPoint, subId, pcoords, dist2, weights);
                     return cId;
                 }
             }
-
-            // back to the original values
-            targetPoint = savePoint;
         }
+
+        // back to the original values
+        targetPoint = savePoint;
     }
 
     // failed to find the cell

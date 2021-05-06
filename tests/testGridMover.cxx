@@ -56,11 +56,7 @@ void createUniformGrid(int nx, int ny, double lonMin, double lonMax, double latM
     }
 }
 
-
-int main() {
-
-    int nx = 10;
-    int ny = 5;
+void testRectiLinearGrid(int nx, int ny) {
 
     const int fixLonAcrossDateline = 0;
     const int averageLonAtPole = 0;
@@ -87,8 +83,11 @@ int main() {
 
     ier = mnt_grid_setPointsPtr(&grid0, numVertsPerCell, numCells, &coords0[0]);
     assert(ier == 0);
+
     ier = mnt_grid_setPointsPtr(&grid1, numVertsPerCell, numCells, &coords1[0]);
     assert(ier == 0);
+
+    ier = mnt_grid_dump(&grid0, "testGridMover_grid0.vtk");
 
     // flags for lon-lat grid
     // ier = mnt_grid_setFlags(&srcGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
@@ -106,6 +105,18 @@ int main() {
     double periodX = 360.;
     ier = mnt_gridmover_build(&mover, numCellsPerBucket, periodX);
     assert(ier == 0);
+
+    // DEBUG
+    {
+        const double point[] = {180., -90.05, 0};
+        const double tol = 1.e-12;
+        double pcoords[3];
+        double weights[12];
+        vtkIdType cellId = mover->loc->findCellMultiValued(point, tol, pcoords, weights);
+        std::cerr << "can we find the point? point = " << Vec3{point} << " cellId = " << cellId << '\n';
+        assert(cellId >= 0);
+    }
+
 
     ier = mnt_gridmover_setPointVelocityPtr(&mover, numDims, &velocity[0]);
     assert(ier == 0);
@@ -126,4 +137,73 @@ int main() {
     ier = mnt_gridmover_del(&mover);
     assert(ier == 0);
 
+}
+
+void testInterpVelocity(int nx, int ny) {
+
+    const int fixLonAcrossDateline = 0;
+    const int averageLonAtPole = 0;
+    const int degrees = 1;
+    const int numVertsPerCell = 4;
+    const int numDims = 3;
+
+    int ier;
+
+    Grid_t* grid0 = NULL;
+    Grid_t* grid1 = NULL;
+
+    ier = mnt_grid_new(&grid0);
+    assert(ier == 0);
+    ier = mnt_grid_new(&grid1);
+    assert(ier == 0);
+    vtkIdType numCells = nx * ny;
+    std::vector<double> coords0(numCells*numVertsPerCell*numDims);
+    std::vector<double> velocity(numCells*numVertsPerCell*numDims);
+    createUniformGrid(nx, ny, 0., 360., -90., 90., &coords0[0], &velocity[0]);
+
+    // copy
+    std::vector<double> coords1 = coords0;
+
+    ier = mnt_grid_setPointsPtr(&grid0, numVertsPerCell, numCells, &coords0[0]);
+    assert(ier == 0);
+
+    ier = mnt_grid_setPointsPtr(&grid1, numVertsPerCell, numCells, &coords1[0]);
+    assert(ier == 0);
+
+    ier = mnt_grid_dump(&grid0, "testGridMover_grid0.vtk");
+
+    // flags for lon-lat grid
+    // ier = mnt_grid_setFlags(&srcGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
+    // ier = mnt_grid_setFlags(&dstGridObj, fixLonAcrossDateline, averageLonAtPole, degrees);
+
+    // move grid1 along the velocity field
+    GridMover_t* mover = NULL;
+    ier = mnt_gridmover_new(&mover);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_setGrid(&mover, grid1);
+    assert(ier == 0);
+
+    ier = mnt_gridmover_setPointVelocityPtr(&mover, 3, &velocity[0]);
+
+    int numCellsPerBucket = 128;
+    double periodX = 360.;
+    ier = mnt_gridmover_build(&mover, numCellsPerBucket, periodX);
+    assert(ier == 0);
+
+    double xyz[] = {180., -90.05, 0.};
+    Vec3 vel;
+    ier = mnt_gridmover_interpVelocity(&mover, xyz, &vel[0]);
+    assert(ier == 0);
+
+}
+
+
+int main() {
+
+    int nx = 10;
+    int ny = 5;
+
+    testInterpVelocity(nx, ny);
+    //testRectiLinearGrid(nx, ny);
 }

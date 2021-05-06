@@ -179,7 +179,7 @@ private:
     std::map<int, std::set<vtkIdType> > bucket2Faces;
 
     // vector of one ({0}) or two components ({0, 1}). Use {0, 1} for
-    // folding of over the poles. 
+    // folding over the poles. 
     std::vector<int> kFolding;
 
 
@@ -210,8 +210,9 @@ private:
 
         // normalize
         double x[3];
+        // the buckets are in 2d
         for (size_t i = 0; i < 2; ++i) {
-            x[i] = (point[i] - this->xmin[i]) / (this->xmax[i] - this->xmin[i]); // must have some thickness!
+            x[i] = (point[i] - this->xmin[i]) / (this->xmax[i] - this->xmin[i]);
         }
 
         // bucket coordinates
