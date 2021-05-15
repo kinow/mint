@@ -36,7 +36,7 @@ linux_task:
       PY_VER: "3.8"
   name: "Linux: py${PY_VER}"
   container:
-    image: gcc:latest
+    image: gcc:10.3
   env:
     PATH: ${HOME}/mambaforge/bin:${PATH}
   mamba_cache:
